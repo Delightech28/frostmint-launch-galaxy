@@ -66,29 +66,13 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				frost: {
-					50: '#f0f9ff',
-					100: '#e0f2fe',
-					200: '#bae6fd',
-					300: '#7dd3fc',
-					400: '#38bdf8',
-					500: '#0ea5e9',
-					600: '#0284c7',
-					700: '#0369a1',
-					800: '#075985',
-					900: '#0c4a6e',
-				},
-				ice: {
-					50: '#f8fafc',
-					100: '#f1f5f9',
-					200: '#e2e8f0',
-					300: '#cbd5e1',
-					400: '#94a3b8',
-					500: '#64748b',
-					600: '#475569',
-					700: '#334155',
-					800: '#1e293b',
-					900: '#0f172a',
+				avalanche: {
+					red: '#E84142',
+					'red-dark': '#d63031',
+					black: '#000000',
+					'gray-dark': '#1a1a1a',
+					'gray-medium': '#333333',
+					'gray-light': '#666666'
 				}
 			},
 			borderRadius: {
@@ -113,42 +97,23 @@ export default {
 						height: '0'
 					}
 				},
-				'float': {
-					'0%, 100%': {
-						transform: 'translateY(0px)'
-					},
-					'50%': {
-						transform: 'translateY(-10px)'
-					}
-				},
 				'glow': {
 					'0%, 100%': {
-						opacity: '1'
+						boxShadow: '0 0 20px rgba(232, 65, 66, 0.3)'
 					},
 					'50%': {
-						opacity: '0.5'
-					}
-				},
-				'shimmer': {
-					'0%': {
-						backgroundPosition: '-200% 0'
-					},
-					'100%': {
-						backgroundPosition: '200% 0'
+						boxShadow: '0 0 40px rgba(232, 65, 66, 0.6)'
 					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
 				'accordion-up': 'accordion-up 0.2s ease-out',
-				'float': 'float 3s ease-in-out infinite',
-				'glow': 'glow 2s ease-in-out infinite',
-				'shimmer': 'shimmer 2s linear infinite'
+				'glow': 'glow 2s ease-in-out infinite'
 			},
 			backgroundImage: {
 				'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-				'frost-gradient': 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)',
-				'ice-gradient': 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%)'
+				'red-glow': 'radial-gradient(ellipse at center, rgba(232, 65, 66, 0.1) 0%, transparent 70%)'
 			}
 		}
 	},

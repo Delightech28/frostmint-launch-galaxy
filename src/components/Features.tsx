@@ -1,6 +1,5 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Snowflake, Coin, Palette, ChartLine } from "lucide-react";
+import { Snowflake, Coins, Palette, ChartLine } from "lucide-react";
 
 const Features = () => {
   const launchStyles = [
@@ -37,7 +36,7 @@ const Features = () => {
       description: "Build complex Web3 projects without writing a single line of code"
     },
     {
-      icon: <Coin className="w-8 h-8" />,
+      icon: <Coins className="w-8 h-8" />,
       title: "Dual Modes: Fun or Tradable",
       description: "Choose the perfect token type for your project goals"
     },
@@ -57,7 +56,7 @@ const Features = () => {
       description: "Lightning-fast transactions with minimal fees"
     },
     {
-      icon: <Coin className="w-8 h-8" />,
+      icon: <Coins className="w-8 h-8" />,
       title: "Gasless Minting Support",
       description: "Future: Remove barriers with sponsored transactions"
     }

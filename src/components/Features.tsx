@@ -1,99 +1,107 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Snowflake, Coin, Palette, ChartLine } from "lucide-react";
 
 const Features = () => {
-  const features = [
+  const launchStyles = [
     {
       title: "Fun Coins",
-      subtitle: "Perfect for Memes",
-      description: "Create viral meme tokens with built-in social features, community tools, and gamification elements.",
-      features: ["Instant Social Integration", "Meme Templates", "Community Rewards", "Viral Mechanics"],
+      subtitle: "For Memes",
+      description: "Launch viral tokens that bring your meme to life. No trading required.",
+      features: ["Meme Templates", "Community Tipping", "Shareable Links"],
       gradient: "from-purple-400 to-pink-400",
       emoji: "🎉"
     },
     {
       title: "Trading Coins",
-      subtitle: "Built for Business",
-      description: "Professional-grade tokens with advanced tokenomics, governance features, and institutional-ready infrastructure.",
-      features: ["Advanced Tokenomics", "Governance Tools", "Staking Mechanisms", "Liquidity Management"],
+      subtitle: "For Business",
+      description: "Create fully tradable tokens and instantly add liquidity via DEX integrations.",
+      features: ["AVAX + Token LP Support", "Price Charts & Volume", "Token Ownership Tools"],
       gradient: "from-frost-400 to-blue-500",
       emoji: "💼"
+    },
+    {
+      title: "NFT Collections",
+      subtitle: "For Creators",
+      description: "Mint basic NFT drops with your image, name, and quantity.",
+      features: ["Community Minting", "NFT Explorer Pages", "Creator-First Focus"],
+      gradient: "from-green-400 to-teal-500",
+      emoji: "🎨"
     }
   ];
 
   const platformFeatures = [
     {
-      icon: "🚀",
-      title: "No-Code Creation",
+      icon: <Snowflake className="w-8 h-8" />,
+      title: "No-Code Token & NFT Creation",
       description: "Build complex Web3 projects without writing a single line of code"
     },
     {
-      icon: "❄️",
-      title: "Avalanche Native",
-      description: "Lightning-fast transactions with minimal fees on Avalanche network"
+      icon: <Coin className="w-8 h-8" />,
+      title: "Dual Modes: Fun or Tradable",
+      description: "Choose the perfect token type for your project goals"
     },
     {
-      icon: "💎",
-      title: "$ENA Token Utility",
-      description: "Stake $ENA for premium features, reduced fees, and exclusive access"
+      icon: <ChartLine className="w-8 h-8" />,
+      title: "Add Liquidity for Trading Coins",
+      description: "Instant DEX integration for serious trading projects"
     },
     {
-      icon: "🔒",
-      title: "Audit-Ready Smart Contracts",
-      description: "Battle-tested, secure smart contracts deployed automatically"
+      icon: <Palette className="w-8 h-8" />,
+      title: "$ENA Integration for Premium Tools",
+      description: "Coming Soon: Enhanced features for $ENA holders"
     },
     {
-      icon: "📊",
-      title: "Built-in Analytics",
-      description: "Real-time dashboards to track your project's performance"
+      icon: <Snowflake className="w-8 h-8" />,
+      title: "Avalanche Subnet Ready",
+      description: "Lightning-fast transactions with minimal fees"
     },
     {
-      icon: "🌐",
-      title: "Multi-Chain Ready",
-      description: "Future-proof architecture supports cross-chain expansion"
+      icon: <Coin className="w-8 h-8" />,
+      title: "Gasless Minting Support",
+      description: "Future: Remove barriers with sponsored transactions"
     }
   ];
 
   return (
     <section className="py-20 bg-gradient-to-br from-frost-50 to-ice-100">
       <div className="container mx-auto px-4">
-        {/* Token Types */}
+        {/* Launch Styles */}
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-ice-800 mb-6">
-            Choose Your Launch Style
+            Launch Styles
           </h2>
           <p className="text-xl text-ice-600 max-w-3xl mx-auto">
-            Whether you're creating the next viral meme coin or building a serious DeFi project, 
+            Whether you're creating the next viral meme coin or building a serious project, 
             FrostMint has the perfect tools for your vision.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-20 max-w-6xl mx-auto">
-          {features.map((feature, index) => (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-20 max-w-7xl mx-auto">
+          {launchStyles.map((style, index) => (
             <Card key={index} className="border-2 border-frost-200 hover:border-frost-400 transition-all duration-300 hover:shadow-2xl bg-white rounded-3xl overflow-hidden group">
-              <CardHeader className={`bg-gradient-to-r ${feature.gradient} text-white p-8`}>
+              <CardHeader className={`bg-gradient-to-r ${style.gradient} text-white p-6`}>
                 <div className="flex items-center mb-4">
                   <span className="text-4xl mr-4 group-hover:scale-110 transition-transform duration-300">
-                    {feature.emoji}
+                    {style.emoji}
                   </span>
                   <div>
-                    <CardTitle className="text-2xl font-bold">{feature.title}</CardTitle>
-                    <p className="text-white/90 font-medium">{feature.subtitle}</p>
+                    <CardTitle className="text-2xl font-bold">{style.title}</CardTitle>
+                    <p className="text-white/90 font-medium">{style.subtitle}</p>
                   </div>
                 </div>
               </CardHeader>
               
-              <CardContent className="p-8">
+              <CardContent className="p-6">
                 <p className="text-ice-600 mb-6 text-lg leading-relaxed">
-                  {feature.description}
+                  {style.description}
                 </p>
                 
                 <div className="space-y-3">
-                  {feature.features.map((item, idx) => (
+                  {style.features.map((feature, idx) => (
                     <div key={idx} className="flex items-center">
                       <div className="w-2 h-2 bg-frost-500 rounded-full mr-3"></div>
-                      <span className="text-ice-700 font-medium">{item}</span>
+                      <span className="text-ice-700 font-medium">✅ {feature}</span>
                     </div>
                   ))}
                 </div>
@@ -116,7 +124,7 @@ const Features = () => {
           {platformFeatures.map((feature, index) => (
             <Card key={index} className="border border-frost-200 hover:border-frost-400 transition-all duration-300 hover:shadow-lg bg-white/80 backdrop-blur-sm rounded-2xl group">
               <CardContent className="p-6 text-center">
-                <div className="text-4xl mb-4 group-hover:scale-110 transition-transform duration-300">
+                <div className="text-frost-500 mb-4 group-hover:scale-110 transition-transform duration-300 flex justify-center">
                   {feature.icon}
                 </div>
                 <h4 className="text-lg font-bold text-ice-800 mb-3">

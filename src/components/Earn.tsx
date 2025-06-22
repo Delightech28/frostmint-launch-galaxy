@@ -5,40 +5,23 @@ import { Button } from "@/components/ui/button";
 const Earn = () => {
   const earnings = [
     {
-      title: "Creators",
-      subtitle: "Build & Earn",
+      title: "For Creators & Communities",
       icon: "🎨",
       benefits: [
-        "Keep 100% of token sales revenue",
-        "Earn from trading fees (0.3% per transaction)",
-        "Get community tips and donations",
-        "Access premium creation tools with $ENA staking"
-      ],
-      highlight: "Up to $10K+/month for successful projects"
+        "Launch for free or with advanced tools",
+        "Engage users with tipping, staking (future), or liquidity rewards",
+        "Build social + financial capital on Avalanche"
+      ]
     },
     {
-      title: "Communities",
-      subtitle: "Engage & Profit",
-      icon: "🤝",
-      benefits: [
-        "Stake community tokens for passive income",
-        "Participate in governance decisions",
-        "Earn rewards for social engagement",
-        "Get early access to new token launches"
-      ],
-      highlight: "15-25% APY on community staking"
-    },
-    {
-      title: "$ENA Holders",
-      subtitle: "Stake & Multiply",
+      title: "For $ENA Holders (future)",
       icon: "💎",
       benefits: [
-        "Reduced platform fees (up to 75% discount)",
-        "Premium analytics and insights",
-        "Early access to new features",
-        "Revenue sharing from platform growth"
-      ],
-      highlight: "20-40% APY + platform revenue share"
+        "Unlock premium features",
+        "Reduced platform fees",
+        "Priority launch access",
+        "Platform revenue share"
+      ]
     }
   ];
 
@@ -47,36 +30,26 @@ const Earn = () => {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="text-4xl md:text-5xl font-bold text-ice-800 mb-6">
-            Earn with FrostMint
+            💸 Earn with FrostMint
           </h2>
           <p className="text-xl text-ice-600 max-w-3xl mx-auto">
-            Multiple revenue streams for creators, communities, and token holders. 
-            Turn your creativity and participation into real income.
+            Whether you're a creator, meme lord, or dev, FrostMint helps you grow and earn onchain.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto mb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-5xl mx-auto mb-16">
           {earnings.map((earning, index) => (
             <Card key={index} className="border-2 border-frost-200 hover:border-frost-400 transition-all duration-300 hover:shadow-xl bg-gradient-to-br from-white to-frost-50 rounded-3xl group">
               <CardHeader className="text-center p-8">
                 <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">
                   {earning.icon}
                 </div>
-                <CardTitle className="text-2xl font-bold text-ice-800 mb-2">
+                <CardTitle className="text-2xl font-bold text-ice-800">
                   {earning.title}
                 </CardTitle>
-                <p className="text-frost-600 font-medium">
-                  {earning.subtitle}
-                </p>
               </CardHeader>
               
               <CardContent className="p-8 pt-0">
-                <div className="bg-frost-100 rounded-2xl p-4 mb-6 text-center">
-                  <p className="text-frost-700 font-bold text-lg">
-                    {earning.highlight}
-                  </p>
-                </div>
-                
                 <div className="space-y-4">
                   {earning.benefits.map((benefit, idx) => (
                     <div key={idx} className="flex items-start">

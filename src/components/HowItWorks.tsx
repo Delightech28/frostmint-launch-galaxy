@@ -5,18 +5,18 @@ const HowItWorks = () => {
   const steps = [
     {
       icon: "🎯",
-      title: "Choose Type",
-      description: "Select between Fun Coins for memes or Trading Coins for serious projects. Pick your perfect blockchain launch strategy."
+      title: "Choose Your Launch Type",
+      description: "Pick between a Fun Coin, a Trading Coin, or a Basic NFT Drop. Fun Coins are for community vibes. Trading Coins come with liquidity tools."
     },
     {
-      icon: "⚡",
-      title: "Mint",
-      description: "Configure your token in seconds. Set name, symbol, supply, and features. Our smart contracts handle the rest automatically."
+      icon: "🎨",
+      title: "Customize Your Token or NFT",
+      description: "Set your name, symbol, supply (for tokens), or upload media (for NFTs). Our contracts do the heavy lifting."
     },
     {
-      icon: "📈",
-      title: "Share & Trade",
-      description: "Launch instantly on Avalanche. Share with your community and start trading immediately on integrated DEXs."
+      icon: "🚀",
+      title: "Mint & Share",
+      description: "Launch instantly on Avalanche. Share with your community or list on a DEX."
     }
   ];
 

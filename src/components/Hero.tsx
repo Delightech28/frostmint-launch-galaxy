@@ -16,7 +16,7 @@ const Hero = () => {
         <div className="text-center max-w-5xl mx-auto">
           {/* Badge */}
           <div className="inline-flex items-center px-4 py-2 bg-frost-100 border border-frost-200 rounded-full text-frost-700 text-sm font-medium mb-8 animate-shimmer bg-[length:200%_100%] bg-gradient-to-r from-frost-100 via-white to-frost-100">
-            ❄️ Powered by Avalanche • No Code Required
+            ❄️ Built for creators, meme lovers, and onchain culture
           </div>
           
           {/* Main headline */}
@@ -28,8 +28,7 @@ const Hero = () => {
           
           {/* Subheadline */}
           <p className="text-xl md:text-2xl text-ice-600 mb-12 max-w-3xl mx-auto leading-relaxed">
-            FrostMint is the ultimate no-code launchpad. Build meme coins and NFTs on Avalanche 
-            without writing a single line of code. From idea to launch in under 60 seconds.
+            FrostMint is the no-code launchpad for Avalanche. Launch your own meme coin or NFT collection — in under 60 seconds. No coding. Just vibes.
           </p>
           
           {/* CTA Buttons */}
@@ -55,15 +54,15 @@ const Hero = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-2xl mx-auto">
             <div className="text-center">
               <div className="text-3xl font-bold text-frost-600 mb-2">10,000+</div>
-              <div className="text-ice-500 font-medium">Tokens Created</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-frost-600 mb-2">$2M+</div>
-              <div className="text-ice-500 font-medium">Volume Traded</div>
+              <div className="text-ice-500 font-medium">Tokens Minted</div>
             </div>
             <div className="text-center">
               <div className="text-3xl font-bold text-frost-600 mb-2">5,000+</div>
-              <div className="text-ice-500 font-medium">Active Creators</div>
+              <div className="text-ice-500 font-medium">Creators Onboarded</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-frost-600 mb-2">$2M+</div>
+              <div className="text-ice-500 font-medium">Onchain Value Launched</div>
             </div>
           </div>
         </div>

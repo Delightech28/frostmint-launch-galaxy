@@ -1,11 +1,17 @@
 
 import { Button } from "@/components/ui/button";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/contexts/WalletContext";
-import { Rocket, Compass, Coins, Bell, Wallet } from "lucide-react";
+import { Rocket, Compass, Coins, Bell, Wallet, AlertTriangle, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Navigation = () => {
-  const { isConnected, address, disconnect } = useWallet();
+  const { isConnected, address, disconnect, isCorrectNetwork, switchToAvalanche } = useWallet();
   const location = useLocation();
 
   const navItems = [
@@ -47,31 +53,53 @@ const Navigation = () => {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
+            {/* Network Warning */}
+            {isConnected && !isCorrectNetwork && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={switchToAvalanche}
+                className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black flex items-center space-x-1"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                <span className="hidden sm:inline">Switch to Fuji</span>
+              </Button>
+            )}
+
+            {/* Notifications */}
             {isConnected && (
               <Button variant="ghost" size="icon" className="text-white hover:bg-avalanche-gray-dark">
                 <Bell className="h-4 w-4" />
               </Button>
             )}
             
+            {/* Wallet Connection */}
             {isConnected ? (
-              <div className="flex items-center space-x-2">
-                <div className="flex items-center space-x-2 px-3 py-2 bg-avalanche-gray-dark rounded-md">
-                  <Wallet className="h-4 w-4 text-white" />
-                  <span className="text-white text-sm">{formatAddress(address!)}</span>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={disconnect}
-                  className="border-avalanche-red text-avalanche-red hover:bg-avalanche-red hover:text-white"
-                >
-                  Disconnect
-                </Button>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="border-avalanche-red text-white hover:bg-avalanche-gray-dark flex items-center space-x-2"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    <span className="hidden sm:inline">{formatAddress(address!)}</span>
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-avalanche-gray-dark border-avalanche-gray-medium">
+                  <DropdownMenuItem 
+                    onClick={disconnect}
+                    className="text-red-400 hover:bg-avalanche-gray-medium cursor-pointer"
+                  >
+                    Disconnect Wallet
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
               <Link to="/login">
-                <Button className="bg-avalanche-red hover:bg-avalanche-red-dark text-white">
-                  Connect Wallet
+                <Button className="bg-avalanche-red hover:bg-avalanche-red-dark text-white flex items-center space-x-2">
+                  <Wallet className="h-4 w-4" />
+                  <span>Connect Wallet</span>
                 </Button>
               </Link>
             )}

@@ -1,6 +1,6 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { ethers } from 'ethers';
+import MetaMaskDialog from '@/components/MetaMaskDialog';
 
 interface WalletContextType {
   isConnected: boolean;
@@ -37,6 +37,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const [isConnected, setIsConnected] = useState(false);
   const [address, setAddress] = useState<string | null>(null);
   const [isCorrectNetwork, setIsCorrectNetwork] = useState(false);
+  const [showMetaMaskDialog, setShowMetaMaskDialog] = useState(false);
 
   const checkNetwork = async () => {
     if (window.ethereum) {
@@ -52,7 +53,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const switchToAvalanche = async () => {
     if (!window.ethereum) {
-      alert('MetaMask is not installed!');
+      setShowMetaMaskDialog(true);
       return;
     }
 
@@ -125,7 +126,7 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
 
   const connect = async () => {
     if (!window.ethereum) {
-      alert('MetaMask is not installed! Please install MetaMask to continue.');
+      setShowMetaMaskDialog(true);
       return;
     }
 
@@ -177,6 +178,10 @@ export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ childr
       switchToAvalanche 
     }}>
       {children}
+      <MetaMaskDialog 
+        isOpen={showMetaMaskDialog} 
+        onClose={() => setShowMetaMaskDialog(false)} 
+      />
     </WalletContext.Provider>
   );
 };

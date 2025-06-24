@@ -9,8 +9,9 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, Copy, ExternalLink } from "lucide-react";
+import { CheckCircle, Copy, ExternalLink, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface TokenCreatedModalProps {
   isOpen: boolean;
@@ -27,6 +28,8 @@ const TokenCreatedModal = ({
   tokenName, 
   tokenTicker 
 }: TokenCreatedModalProps) => {
+  const navigate = useNavigate();
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -38,6 +41,11 @@ const TokenCreatedModal = ({
 
   const openInExplorer = () => {
     window.open(`https://testnet.snowtrace.io/address/${tokenAddress}`, '_blank');
+  };
+
+  const goToDashboard = () => {
+    onClose();
+    navigate('/dashboard');
   };
 
   return (
@@ -84,12 +92,19 @@ const TokenCreatedModal = ({
           </div>
         </div>
 
-        <AlertDialogFooter>
+        <AlertDialogFooter className="flex space-x-2">
+          <Button
+            onClick={goToDashboard}
+            className="flex-1 bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+          >
+            <BarChart3 className="h-4 w-4 mr-2" />
+            View Dashboard
+          </Button>
           <AlertDialogAction 
             onClick={onClose}
-            className="bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+            className="flex-1 bg-gray-600 hover:bg-gray-700 text-white"
           >
-            Done
+            Stay Here
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

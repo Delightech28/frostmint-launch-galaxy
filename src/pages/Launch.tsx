@@ -32,6 +32,16 @@ const Launch = () => {
     image: null as File | null,
   });
 
+  const handleTickerChange = (value: string) => {
+    // Auto-format ticker: 3-6 characters, uppercase, no special chars
+    const formatted = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
+    setTokenData({...tokenData, ticker: formatted});
+  };
+
+  const isValidTicker = (ticker: string) => {
+    return ticker.length >= 3 && ticker.length <= 6;
+  };
+
   const handleCreateToken = async () => {
     if (!isConnected) {
       toast.error("Please connect your wallet first");
@@ -45,6 +55,11 @@ const Launch = () => {
 
     if (!tokenData.name || !tokenData.ticker || !tokenData.supply) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+
+    if (!isValidTicker(tokenData.ticker)) {
+      toast.error("Ticker must be 3-6 characters");
       return;
     }
 
@@ -147,14 +162,24 @@ const Launch = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="fun-ticker" className="text-gray-300">Ticker Symbol *</Label>
+                      <Label htmlFor="fun-ticker" className="text-gray-300">
+                        Ticker Symbol * <span className="text-xs text-gray-400">(3-6 characters)</span>
+                      </Label>
                       <Input
                         id="fun-ticker"
                         placeholder="e.g., DMOON"
                         value={tokenData.ticker}
-                        onChange={(e) => setTokenData({...tokenData, ticker: e.target.value.toUpperCase()})}
-                        className="bg-black border-avalanche-gray-medium text-white"
+                        onChange={(e) => handleTickerChange(e.target.value)}
+                        className={`bg-black border-avalanche-gray-medium text-white ${
+                          tokenData.ticker && !isValidTicker(tokenData.ticker) 
+                            ? 'border-red-500' 
+                            : ''
+                        }`}
+                        maxLength={6}
                       />
+                      {tokenData.ticker && !isValidTicker(tokenData.ticker) && (
+                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 characters</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="fun-supply" className="text-gray-300">Initial Supply *</Label>
@@ -164,6 +189,7 @@ const Launch = () => {
                         value={tokenData.supply}
                         onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
+                        type="number"
                       />
                     </div>
                     <div>
@@ -184,7 +210,7 @@ const Launch = () => {
                     
                     <Button 
                       onClick={handleCreateToken}
-                      disabled={!isConnected || !isCorrectNetwork || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply}
+                      disabled={!isConnected || !isCorrectNetwork || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply || !isValidTicker(tokenData.ticker)}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
                     >
                       {isCreating ? (
@@ -323,7 +349,7 @@ const Launch = () => {
                       {tokenData.name || "Your Token Name"}
                     </h3>
                     <p className="text-gray-400 text-sm mb-4">
-                      {tokenData.ticker || "TICKER"}
+                      ${tokenData.ticker || "TICKER"}
                     </p>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>

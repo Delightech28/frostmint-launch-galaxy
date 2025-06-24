@@ -4,8 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useWallet } from "@/contexts/WalletContext";
@@ -13,7 +12,7 @@ import { createMemeCoin, getTokenAddressFromReceipt } from "@/utils/contractUtil
 import TokenCreatedModal from "@/components/TokenCreatedModal";
 
 const Launch = () => {
-  const { isConnected, isCorrectNetwork, switchToAvalanche } = useWallet();
+  const { isConnected } = useWallet();
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdTokenAddress, setCreatedTokenAddress] = useState("");
@@ -33,8 +32,8 @@ const Launch = () => {
   });
 
   const handleTickerChange = (value: string) => {
-    // Auto-format ticker: 3-6 characters, uppercase, no special chars
-    const formatted = value.replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6);
+    // Auto-format ticker: 3-6 characters, uppercase, letters only
+    const formatted = value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
     setTokenData({...tokenData, ticker: formatted});
   };
 
@@ -45,11 +44,6 @@ const Launch = () => {
   const handleCreateToken = async () => {
     if (!isConnected) {
       toast.error("Please connect your wallet first");
-      return;
-    }
-
-    if (!isCorrectNetwork) {
-      toast.error("Please switch to Avalanche Fuji testnet");
       return;
     }
 
@@ -113,22 +107,6 @@ const Launch = () => {
           </p>
         </div>
 
-        {!isCorrectNetwork && isConnected && (
-          <Alert className="mb-6 bg-yellow-900/20 border-yellow-500">
-            <AlertTriangle className="h-4 w-4 text-yellow-400" />
-            <AlertDescription className="text-yellow-300">
-              You are not connected to Avalanche Fuji testnet. 
-              <Button 
-                onClick={switchToAvalanche}
-                variant="link" 
-                className="text-yellow-400 hover:text-yellow-300 p-0 ml-1 h-auto"
-              >
-                Switch network
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Launch Form */}
           <div>
@@ -159,11 +137,12 @@ const Launch = () => {
                         value={tokenData.name}
                         onChange={(e) => setTokenData({...tokenData, name: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
+                        maxLength={20}
                       />
                     </div>
                     <div>
                       <Label htmlFor="fun-ticker" className="text-gray-300">
-                        Ticker Symbol * <span className="text-xs text-gray-400">(3-6 characters)</span>
+                        Ticker Symbol * <span className="text-xs text-gray-400">(3-6 letters only)</span>
                       </Label>
                       <Input
                         id="fun-ticker"
@@ -178,7 +157,7 @@ const Launch = () => {
                         maxLength={6}
                       />
                       {tokenData.ticker && !isValidTicker(tokenData.ticker) && (
-                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 characters</p>
+                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
                       )}
                     </div>
                     <div>
@@ -205,12 +184,12 @@ const Launch = () => {
                     
                     <div className="bg-avalanche-gray-medium p-4 rounded-lg">
                       <p className="text-gray-300 text-sm mb-2">Minting Fee: <span className="text-avalanche-red font-semibold">0.01 AVAX</span></p>
-                      <p className="text-gray-400 text-xs">This fee covers the gas costs for deploying your token contract on Avalanche Fuji testnet.</p>
+                      <p className="text-gray-400 text-xs">This fee covers the gas costs for deploying your token contract on Avalanche.</p>
                     </div>
                     
                     <Button 
                       onClick={handleCreateToken}
-                      disabled={!isConnected || !isCorrectNetwork || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply || !isValidTicker(tokenData.ticker)}
+                      disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply || !isValidTicker(tokenData.ticker)}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
                     >
                       {isCreating ? (

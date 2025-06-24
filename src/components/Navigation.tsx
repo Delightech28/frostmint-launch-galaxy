@@ -7,11 +7,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/contexts/WalletContext";
-import { Rocket, Compass, Coins, Bell, Wallet, AlertTriangle, ChevronDown } from "lucide-react";
+import { Rocket, Compass, Coins, Bell, Wallet, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Navigation = () => {
-  const { isConnected, address, disconnect, isCorrectNetwork, switchToAvalanche } = useWallet();
+  const { isConnected, address, disconnect } = useWallet();
   const location = useLocation();
 
   const navItems = [
@@ -53,19 +53,6 @@ const Navigation = () => {
 
           {/* Right side */}
           <div className="flex items-center space-x-4">
-            {/* Network Warning */}
-            {isConnected && !isCorrectNetwork && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={switchToAvalanche}
-                className="border-yellow-500 text-yellow-500 hover:bg-yellow-500 hover:text-black flex items-center space-x-1"
-              >
-                <AlertTriangle className="h-3 w-3" />
-                <span className="hidden sm:inline">Switch to Fuji</span>
-              </Button>
-            )}
-
             {/* Notifications */}
             {isConnected && (
               <Button variant="ghost" size="icon" className="text-white hover:bg-avalanche-gray-dark">

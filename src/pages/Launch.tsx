@@ -1,14 +1,23 @@
-
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useWallet } from "@/contexts/WalletContext";
+import { createMemeCoin, getTokenAddressFromReceipt } from "@/utils/contractUtils";
+import TokenCreatedModal from "@/components/TokenCreatedModal";
 
 const Launch = () => {
+  const { isConnected, isCorrectNetwork, switchToAvalanche } = useWallet();
+  const [isCreating, setIsCreating] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [createdTokenAddress, setCreatedTokenAddress] = useState("");
+  
   const [tokenData, setTokenData] = useState({
     name: "",
     ticker: "",
@@ -23,6 +32,58 @@ const Launch = () => {
     image: null as File | null,
   });
 
+  const handleCreateToken = async () => {
+    if (!isConnected) {
+      toast.error("Please connect your wallet first");
+      return;
+    }
+
+    if (!isCorrectNetwork) {
+      toast.error("Please switch to Avalanche Fuji testnet");
+      return;
+    }
+
+    if (!tokenData.name || !tokenData.ticker || !tokenData.supply) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+
+    try {
+      setIsCreating(true);
+      toast.info("Creating your meme coin...");
+      
+      const tx = await createMemeCoin(
+        tokenData.name,
+        tokenData.ticker,
+        tokenData.supply
+      );
+      
+      toast.info("Transaction submitted. Waiting for confirmation...");
+      const receipt = await tx.wait();
+      
+      const tokenAddress = getTokenAddressFromReceipt(receipt);
+      if (tokenAddress) {
+        setCreatedTokenAddress(tokenAddress);
+        setShowSuccessModal(true);
+        // Reset form
+        setTokenData({ name: "", ticker: "", supply: "", description: "" });
+      } else {
+        toast.error("Token created but couldn't retrieve address");
+      }
+    } catch (error: any) {
+      console.error("Error creating token:", error);
+      if (error.code === 4001) {
+        toast.error("Transaction rejected by user");
+      } else if (error.code === -32603) {
+        toast.error("Insufficient funds for minting fee");
+      } else {
+        toast.error("Failed to create token. Please try again.");
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const handleLaunchToken = (type: string) => {
     toast.success(`${type} launch initiated! (Demo mode)`);
   };
@@ -36,6 +97,22 @@ const Launch = () => {
             Create meme coins or NFT collections on Avalanche in seconds
           </p>
         </div>
+
+        {!isCorrectNetwork && isConnected && (
+          <Alert className="mb-6 bg-yellow-900/20 border-yellow-500">
+            <AlertTriangle className="h-4 w-4 text-yellow-400" />
+            <AlertDescription className="text-yellow-300">
+              You are not connected to Avalanche Fuji testnet. 
+              <Button 
+                onClick={switchToAvalanche}
+                variant="link" 
+                className="text-yellow-400 hover:text-yellow-300 p-0 ml-1 h-auto"
+              >
+                Switch network
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Launch Form */}
@@ -60,7 +137,7 @@ const Launch = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="fun-name" className="text-gray-300">Token Name</Label>
+                      <Label htmlFor="fun-name" className="text-gray-300">Token Name *</Label>
                       <Input
                         id="fun-name"
                         placeholder="e.g., DogeMoon"
@@ -70,17 +147,17 @@ const Launch = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="fun-ticker" className="text-gray-300">Ticker Symbol</Label>
+                      <Label htmlFor="fun-ticker" className="text-gray-300">Ticker Symbol *</Label>
                       <Input
                         id="fun-ticker"
                         placeholder="e.g., DMOON"
                         value={tokenData.ticker}
-                        onChange={(e) => setTokenData({...tokenData, ticker: e.target.value})}
+                        onChange={(e) => setTokenData({...tokenData, ticker: e.target.value.toUpperCase()})}
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="fun-supply" className="text-gray-300">Total Supply</Label>
+                      <Label htmlFor="fun-supply" className="text-gray-300">Initial Supply *</Label>
                       <Input
                         id="fun-supply"
                         placeholder="e.g., 1000000"
@@ -99,11 +176,25 @@ const Launch = () => {
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
+                    
+                    <div className="bg-avalanche-gray-medium p-4 rounded-lg">
+                      <p className="text-gray-300 text-sm mb-2">Minting Fee: <span className="text-avalanche-red font-semibold">0.01 AVAX</span></p>
+                      <p className="text-gray-400 text-xs">This fee covers the gas costs for deploying your token contract on Avalanche Fuji testnet.</p>
+                    </div>
+                    
                     <Button 
-                      onClick={() => handleLaunchToken("Fun Coin")}
-                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+                      onClick={handleCreateToken}
+                      disabled={!isConnected || !isCorrectNetwork || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply}
+                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
                     >
-                      Launch Fun Coin
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Token...
+                        </>
+                      ) : (
+                        "Create Token"
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
@@ -238,7 +329,7 @@ const Launch = () => {
                       <div>
                         <div className="text-gray-400">Supply</div>
                         <div className="text-white font-semibold">
-                          {tokenData.supply || "1,000,000"}
+                          {tokenData.supply ? Number(tokenData.supply).toLocaleString() : "1,000,000"}
                         </div>
                       </div>
                       <div>
@@ -246,6 +337,11 @@ const Launch = () => {
                         <div className="text-avalanche-red font-semibold">Avalanche</div>
                       </div>
                     </div>
+                    {tokenData.description && (
+                      <div className="mt-4 p-3 bg-avalanche-gray-medium rounded text-left">
+                        <p className="text-gray-300 text-sm">{tokenData.description}</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -253,6 +349,14 @@ const Launch = () => {
           </div>
         </div>
       </div>
+      
+      <TokenCreatedModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        tokenAddress={createdTokenAddress}
+        tokenName={tokenData.name}
+        tokenTicker={tokenData.ticker}
+      />
     </div>
   );
 };

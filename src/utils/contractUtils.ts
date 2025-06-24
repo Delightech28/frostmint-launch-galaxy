@@ -92,21 +92,58 @@ export const createMemeCoin = async (
 };
 
 export const getTokenAddressFromReceipt = (receipt: ethers.TransactionReceipt): string | null => {
+  console.log('Receipt logs:', receipt.logs);
+  
+  // Create interface for parsing events
+  const iface = new ethers.Interface(MEME_COIN_FACTORY_ABI);
+  
   for (const log of receipt.logs) {
     try {
-      const iface = new ethers.Interface(MEME_COIN_FACTORY_ABI);
+      console.log('Processing log:', log);
+      
+      // Parse the log
+      const parsed = iface.parseLog({
+        topics: log.topics,
+        data: log.data
+      });
+      
+      console.log('Parsed log:', parsed);
+      
+      if (parsed && parsed.name === 'TokenCreated') {
+        console.log('Found TokenCreated event, token address:', parsed.args.tokenAddress);
+        return parsed.args.tokenAddress;
+      }
+    } catch (error) {
+      console.log('Error parsing log:', error);
+      // Continue to next log if parsing fails
+      continue;
+    }
+  }
+  
+  // Alternative approach: look for logs from the factory contract
+  const factoryLogs = receipt.logs.filter(log => 
+    log.address.toLowerCase() === MEME_COIN_FACTORY_ADDRESS.toLowerCase()
+  );
+  
+  console.log('Factory logs:', factoryLogs);
+  
+  for (const log of factoryLogs) {
+    try {
       const parsed = iface.parseLog({
         topics: log.topics,
         data: log.data
       });
       
       if (parsed && parsed.name === 'TokenCreated') {
+        console.log('Found TokenCreated event in factory logs, token address:', parsed.args.tokenAddress);
         return parsed.args.tokenAddress;
       }
     } catch (error) {
-      // Continue to next log if parsing fails
+      console.log('Error parsing factory log:', error);
       continue;
     }
   }
+  
+  console.log('No TokenCreated event found in receipt');
   return null;
 };

@@ -2,12 +2,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useWallet } from "@/contexts/WalletContext";
-import { Wallet, AlertTriangle } from "lucide-react";
+import { Wallet } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const { isConnected, connect, isCorrectNetwork, switchToAvalanche } = useWallet();
+  const { isConnected, connect } = useWallet();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -45,7 +45,7 @@ const Login = () => {
                 </div>
                 <h2 className="text-xl font-semibold text-white mb-2">Connect MetaMask</h2>
                 <p className="text-gray-400 text-sm">
-                  Connect your MetaMask wallet to launch on Avalanche Fuji testnet
+                  Connect your MetaMask wallet to start launching tokens
                 </p>
               </div>
               
@@ -57,25 +57,6 @@ const Login = () => {
                 <Wallet className="mr-2 h-5 w-5" />
                 Connect MetaMask
               </Button>
-
-              {isConnected && !isCorrectNetwork && (
-                <div className="mt-4 p-3 bg-yellow-900/20 border border-yellow-500 rounded-md">
-                  <div className="flex items-center space-x-2 text-yellow-400 mb-2">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Wrong Network</span>
-                  </div>
-                  <p className="text-xs text-yellow-300 mb-3">
-                    Please switch to Avalanche Fuji testnet to continue
-                  </p>
-                  <Button
-                    onClick={switchToAvalanche}
-                    size="sm"
-                    className="w-full bg-yellow-600 hover:bg-yellow-700 text-black"
-                  >
-                    Switch to Avalanche Fuji
-                  </Button>
-                </div>
-              )}
 
               <div className="mt-4 text-xs text-gray-500">
                 <p>Don't have MetaMask? <a href="https://metamask.io/" target="_blank" rel="noopener noreferrer" className="text-avalanche-red hover:underline">Download here</a></p>

@@ -21,35 +21,110 @@ interface Notification {
   type: 'token_created' | 'token_bought';
   read: boolean;
   created_at: string;
+  user_id?: string;
 }
 
 const NotificationDropdown = () => {
   const { address, isConnected } = useWallet();
   const queryClient = useQueryClient();
   const [isOpen, setIsOpen] = useState(false);
+  const [localNotifications, setLocalNotifications] = useState<Notification[]>([]);
 
-  // Mock notifications for now (since we haven't created the notifications table yet)
-  const mockNotifications: Notification[] = [
-    {
-      id: '1',
-      title: 'Token Created Successfully! 🎉',
-      message: 'Your meme coin "DogeMoon" has been successfully created on the blockchain.',
-      type: 'token_created',
-      read: false,
-      created_at: new Date().toISOString()
-    },
-    {
-      id: '2',
-      title: 'Someone Bought Your Token! 💰',
-      message: 'A user just purchased 1000 tokens of your "MemeKing" coin.',
-      type: 'token_bought',
-      read: false,
-      created_at: new Date(Date.now() - 3600000).toISOString()
+  // Listen for new notifications from localStorage (for cross-tab communication)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'new-notification' && e.newValue) {
+        const notification = JSON.parse(e.newValue);
+        if (notification.user_id === address) {
+          setLocalNotifications(prev => [notification, ...prev]);
+          // Remove from localStorage after processing
+          localStorage.removeItem('new-notification');
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, [address]);
+
+  // Check for notifications in localStorage on mount
+  useEffect(() => {
+    if (address) {
+      const stored = localStorage.getItem(`notifications-${address}`);
+      if (stored) {
+        setLocalNotifications(JSON.parse(stored));
+      }
     }
-  ];
+  }, [address]);
 
-  const notifications = mockNotifications; // Replace with real query later
+  // Save notifications to localStorage when they change
+  useEffect(() => {
+    if (address && localNotifications.length > 0) {
+      localStorage.setItem(`notifications-${address}`, JSON.stringify(localNotifications));
+    }
+  }, [localNotifications, address]);
+
+  // Real-time notifications (simulated with localStorage for now)
+  useEffect(() => {
+    if (!address) return;
+
+    // Listen for token creation events
+    const tokenCreatedListener = (event: CustomEvent) => {
+      const { tokenName, ticker, userAddress } = event.detail;
+      if (userAddress === address) {
+        const notification: Notification = {
+          id: Date.now().toString(),
+          title: 'Token Created Successfully! 🎉',
+          message: `Your meme coin "${tokenName}" (${ticker}) has been successfully created on the blockchain.`,
+          type: 'token_created',
+          read: false,
+          created_at: new Date().toISOString(),
+          user_id: address
+        };
+        
+        setLocalNotifications(prev => [notification, ...prev]);
+      }
+    };
+
+    // Listen for token bought events (simulated)
+    const tokenBoughtListener = (event: CustomEvent) => {
+      const { tokenName, amount, creatorAddress } = event.detail;
+      if (creatorAddress === address) {
+        const notification: Notification = {
+          id: Date.now().toString(),
+          title: 'Someone Bought Your Token! 💰',
+          message: `A user just purchased ${amount} tokens of your "${tokenName}" coin.`,
+          type: 'token_bought',
+          read: false,
+          created_at: new Date().toISOString(),
+          user_id: address
+        };
+        
+        setLocalNotifications(prev => [notification, ...prev]);
+      }
+    };
+
+    window.addEventListener('tokenCreated', tokenCreatedListener as EventListener);
+    window.addEventListener('tokenBought', tokenBoughtListener as EventListener);
+
+    return () => {
+      window.removeEventListener('tokenCreated', tokenCreatedListener as EventListener);
+      window.removeEventListener('tokenBought', tokenBoughtListener as EventListener);
+    };
+  }, [address]);
+
+  const notifications = localNotifications;
   const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllAsRead = () => {
+    setLocalNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const markAsRead = (id: string) => {
+    setLocalNotifications(prev => prev.map(n => 
+      n.id === id ? { ...n, read: true } : n
+    ));
+  };
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -81,12 +156,12 @@ const NotificationDropdown = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="relative text-white hover:bg-avalanche-gray-dark"
+          className="relative text-white hover:bg-avalanche-gray-dark hover:text-white"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <Badge 
-              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-avalanche-red text-xs p-0 flex items-center justify-center"
+              className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-avalanche-red text-xs p-0 flex items-center justify-center border-0"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
@@ -104,7 +179,8 @@ const NotificationDropdown = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-avalanche-red hover:bg-avalanche-gray-medium h-auto p-1"
+                onClick={markAllAsRead}
+                className="text-avalanche-red hover:bg-avalanche-gray-medium hover:text-avalanche-red h-auto p-1"
               >
                 <Check className="h-3 w-3 mr-1" />
                 Mark all read
@@ -124,6 +200,7 @@ const NotificationDropdown = () => {
               <DropdownMenuItem
                 key={notification.id}
                 className="p-3 border-b border-avalanche-gray-medium last:border-b-0 cursor-pointer hover:bg-avalanche-gray-medium focus:bg-avalanche-gray-medium"
+                onClick={() => markAsRead(notification.id)}
               >
                 <div className="flex items-start space-x-3 w-full">
                   <div className="text-lg flex-shrink-0">
@@ -158,7 +235,7 @@ const NotificationDropdown = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full text-avalanche-red hover:bg-avalanche-gray-medium"
+                className="w-full text-avalanche-red hover:bg-avalanche-gray-medium hover:text-avalanche-red"
               >
                 View All Notifications
               </Button>

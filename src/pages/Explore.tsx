@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, TrendingUp, Filter, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -38,40 +38,81 @@ const Explore = () => {
     { id: "trending", label: "Trending" }
   ];
 
-  // Function to determine token type based on name/ticker
-  const getTokenType = (name: string, ticker: string) => {
+  // Improved token type detection
+  const getTokenType = (name: string, ticker: string, description?: string) => {
     const nameUpper = name.toLowerCase();
     const tickerUpper = ticker.toLowerCase();
+    const descUpper = description?.toLowerCase() || '';
     
-    if (nameUpper.includes('nft') || tickerUpper.includes('nft')) return 'NFT';
-    if (nameUpper.includes('meme') || nameUpper.includes('doge') || nameUpper.includes('shib')) return 'Fun Coin';
+    // NFT detection
+    if (nameUpper.includes('nft') || tickerUpper.includes('nft') || descUpper.includes('nft')) {
+      return 'NFT';
+    }
+    
+    // Fun/Meme coin detection (more comprehensive)
+    const funKeywords = [
+      'meme', 'doge', 'shib', 'pepe', 'moon', 'rocket', 'diamond', 'hands',
+      'ape', 'banana', 'hodl', 'lambo', 'fun', 'joke', 'lol', 'haha',
+      'cute', 'funny', 'silly', 'crazy', 'wild', 'mad', 'insane',
+      'cat', 'dog', 'frog', 'bear', 'bull', 'bear', 'panda', 'monkey',
+      'baby', 'mini', 'micro', 'safe', 'mega', 'ultra', 'super',
+      'floki', 'elon', 'doge', 'shiba', 'akita', 'kishu'
+    ];
+    
+    const hasFunKeyword = funKeywords.some(keyword => 
+      nameUpper.includes(keyword) || 
+      tickerUpper.includes(keyword) || 
+      descUpper.includes(keyword)
+    );
+    
+    if (hasFunKeyword) {
+      return 'Fun Coin';
+    }
+    
+    // Default to trading coin
     return 'Trading Coin';
   };
 
-  // Function to generate random price and change data (for demo purposes)
-  const generateMockData = () => ({
-    price: `$${(Math.random() * 0.1).toFixed(4)}`,
-    change: Math.random() > 0.5 ? `+${(Math.random() * 50).toFixed(1)}%` : `-${(Math.random() * 20).toFixed(1)}%`,
-    volume: `$${(Math.random() * 200).toFixed(1)}K`
-  });
+  // Generate stable mock data for each token
+  const generateMockData = (tokenId: string) => {
+    // Use token ID as seed for consistent data
+    const seed = tokenId.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const random1 = Math.sin(seed) * 10000;
+    const random2 = Math.sin(seed * 2) * 10000;
+    const random3 = Math.sin(seed * 3) * 10000;
+    
+    const price = Math.abs(random1 - Math.floor(random1)) * 0.1;
+    const change = (random2 - Math.floor(random2)) * 70 - 35; // -35 to +35
+    const volume = Math.abs(random3 - Math.floor(random3)) * 500;
+    
+    return {
+      price: `$${price.toFixed(4)}`,
+      change: change >= 0 ? `+${change.toFixed(1)}%` : `${change.toFixed(1)}%`,
+      volume: `$${volume.toFixed(1)}K`
+    };
+  };
 
-  const filteredTokens = tokens?.filter(token => {
-    const matchesSearch = token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         token.ticker.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredTokens = useMemo(() => {
+    if (!tokens) return [];
     
-    if (activeFilter === "all") return matchesSearch;
-    
-    const tokenType = getTokenType(token.name, token.ticker);
-    if (activeFilter === "fun") return matchesSearch && tokenType === "Fun Coin";
-    if (activeFilter === "trading") return matchesSearch && tokenType === "Trading Coin";
-    if (activeFilter === "nft") return matchesSearch && tokenType === "NFT";
-    if (activeFilter === "trending") {
-      const mockData = generateMockData();
-      return matchesSearch && parseFloat(mockData.change) > 10;
-    }
-    
-    return matchesSearch;
-  }) || [];
+    return tokens.filter(token => {
+      const matchesSearch = token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           token.ticker.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      if (activeFilter === "all") return matchesSearch;
+      
+      const tokenType = getTokenType(token.name, token.ticker, token.description);
+      if (activeFilter === "fun") return matchesSearch && tokenType === "Fun Coin";
+      if (activeFilter === "trading") return matchesSearch && tokenType === "Trading Coin";
+      if (activeFilter === "nft") return matchesSearch && tokenType === "NFT";
+      if (activeFilter === "trending") {
+        const mockData = generateMockData(token.id);
+        return matchesSearch && parseFloat(mockData.change) > 10;
+      }
+      
+      return matchesSearch;
+    });
+  }, [tokens, searchTerm, activeFilter]);
 
   if (isLoading) {
     return (
@@ -145,8 +186,8 @@ const Explore = () => {
         {/* Projects Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTokens.map((token) => {
-            const tokenType = getTokenType(token.name, token.ticker);
-            const mockData = generateMockData();
+            const tokenType = getTokenType(token.name, token.ticker, token.description);
+            const mockData = generateMockData(token.id);
             
             return (
               <Card key={token.id} className="bg-avalanche-gray-dark border-avalanche-gray-medium hover:border-avalanche-red transition-colors cursor-pointer">

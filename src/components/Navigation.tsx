@@ -7,11 +7,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/contexts/WalletContext";
-import { Rocket, Compass, Coins, Bell, Wallet, ChevronDown } from "lucide-react";
+import { Rocket, Compass, Coins, Bell, Wallet, ChevronDown, Loader2 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Navigation = () => {
-  const { isConnected, address, disconnect } = useWallet();
+  const { isConnected, address, disconnect, connect, isConnecting } = useWallet();
   const location = useLocation();
 
   const navItems = [
@@ -22,6 +22,10 @@ const Navigation = () => {
 
   const formatAddress = (addr: string) => {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  };
+
+  const handleConnect = async () => {
+    await connect();
   };
 
   return (
@@ -83,12 +87,23 @@ const Navigation = () => {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link to="/login">
-                <Button className="bg-avalanche-red hover:bg-avalanche-red-dark text-white flex items-center space-x-2">
-                  <Wallet className="h-4 w-4" />
-                  <span>Connect Wallet</span>
-                </Button>
-              </Link>
+              <Button
+                onClick={handleConnect}
+                disabled={isConnecting}
+                className="bg-avalanche-red hover:bg-avalanche-red-dark text-white flex items-center space-x-2"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Connecting...</span>
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="h-4 w-4" />
+                    <span>Connect Wallet</span>
+                  </>
+                )}
+              </Button>
             )}
           </div>
         </div>

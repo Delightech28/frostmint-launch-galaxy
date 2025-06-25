@@ -12,7 +12,7 @@ import { createMemeCoin, getTokenAddressFromReceipt } from "@/utils/contractUtil
 import TokenCreatedModal from "@/components/TokenCreatedModal";
 
 const Launch = () => {
-  const { isConnected } = useWallet();
+  const { isConnected, address } = useWallet();
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdTokenAddress, setCreatedTokenAddress] = useState("");
@@ -42,7 +42,7 @@ const Launch = () => {
   };
 
   const handleCreateToken = async () => {
-    if (!isConnected) {
+    if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
       return;
     }
@@ -64,27 +64,40 @@ const Launch = () => {
       const tx = await createMemeCoin(
         tokenData.name,
         tokenData.ticker,
-        tokenData.supply
+        tokenData.supply,
+        address,
+        tokenData.description
       );
       
       toast.info("Transaction submitted. Waiting for confirmation...");
       const receipt = await tx.wait();
       
-      const tokenAddress = getTokenAddressFromReceipt(receipt);
+      const tokenAddress = await getTokenAddressFromReceipt(
+        receipt,
+        tokenData.name,
+        tokenData.ticker,
+        address,
+        tokenData.supply,
+        tokenData.description
+      );
+      
       if (tokenAddress) {
         setCreatedTokenAddress(tokenAddress);
         setShowSuccessModal(true);
+        toast.success("Token created successfully!");
         // Reset form
         setTokenData({ name: "", ticker: "", supply: "", description: "" });
       } else {
-        toast.error("Token created but couldn't retrieve address");
+        toast.error("Token created but couldn't retrieve address. Check the explorer for your transaction.");
       }
     } catch (error: any) {
       console.error("Error creating token:", error);
       if (error.code === 4001) {
         toast.error("Transaction rejected by user");
       } else if (error.code === -32603) {
-        toast.error("Insufficient funds for minting fee");
+        toast.error("Insufficient funds for minting fee (0.01 AVAX required)");
+      } else if (error.message && error.message.includes('already exists')) {
+        toast.error(error.message);
       } else {
         toast.error("Failed to create token. Please try again.");
       }

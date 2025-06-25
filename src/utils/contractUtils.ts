@@ -1,5 +1,6 @@
 
 import { ethers } from 'ethers';
+import { supabase } from '@/integrations/supabase/client';
 
 export const MEME_COIN_FACTORY_ADDRESS = '0x7C05dA83a4Fe020aCB26DD8CdAEE9fe9f94760A2';
 
@@ -60,13 +61,84 @@ export const MEME_COIN_FACTORY_ABI = [
   }
 ];
 
+export const checkTokenExists = async (name: string, ticker: string) => {
+  try {
+    const { data, error } = await supabase
+      .from('tokens')
+      .select('name, ticker')
+      .or(`name.eq.${name},ticker.eq.${ticker}`);
+
+    if (error) {
+      console.error('Error checking token existence:', error);
+      return { exists: false, field: null };
+    }
+
+    if (data && data.length > 0) {
+      const existingToken = data[0];
+      if (existingToken.name === name) {
+        return { exists: true, field: 'name' };
+      }
+      if (existingToken.ticker === ticker) {
+        return { exists: true, field: 'ticker' };
+      }
+    }
+
+    return { exists: false, field: null };
+  } catch (error) {
+    console.error('Error checking token existence:', error);
+    return { exists: false, field: null };
+  }
+};
+
+export const saveTokenToDatabase = async (
+  name: string,
+  ticker: string,
+  contractAddress: string,
+  creatorWallet: string,
+  initialSupply: string,
+  description?: string
+) => {
+  try {
+    const { data, error } = await supabase
+      .from('tokens')
+      .insert({
+        name,
+        ticker,
+        contract_address: contractAddress,
+        creator_wallet: creatorWallet,
+        initial_supply: parseInt(initialSupply),
+        description: description || null
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error saving token to database:', error);
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error saving token to database:', error);
+    throw error;
+  }
+};
+
 export const createMemeCoin = async (
   name: string,
   ticker: string,
-  initialSupply: string
+  initialSupply: string,
+  creatorWallet: string,
+  description?: string
 ) => {
   if (!window.ethereum) {
     throw new Error('MetaMask is not installed');
+  }
+
+  // Check if token name or ticker already exists
+  const { exists, field } = await checkTokenExists(name, ticker);
+  if (exists) {
+    throw new Error(`Token ${field} "${field === 'name' ? name : ticker}" already exists. Please choose a different ${field}.`);
   }
 
   const provider = new ethers.BrowserProvider(window.ethereum);
@@ -91,7 +163,14 @@ export const createMemeCoin = async (
   return tx;
 };
 
-export const getTokenAddressFromReceipt = (receipt: ethers.TransactionReceipt): string | null => {
+export const getTokenAddressFromReceipt = async (
+  receipt: ethers.TransactionReceipt, 
+  name: string, 
+  ticker: string, 
+  creatorWallet: string, 
+  initialSupply: string, 
+  description?: string
+): Promise<string | null> => {
   console.log('Receipt logs:', receipt.logs);
   
   // Create interface for parsing events
@@ -110,8 +189,26 @@ export const getTokenAddressFromReceipt = (receipt: ethers.TransactionReceipt): 
       console.log('Parsed log:', parsed);
       
       if (parsed && parsed.name === 'TokenCreated') {
-        console.log('Found TokenCreated event, token address:', parsed.args.tokenAddress);
-        return parsed.args.tokenAddress;
+        const tokenAddress = parsed.args.tokenAddress;
+        console.log('Found TokenCreated event, token address:', tokenAddress);
+        
+        // Save token to database
+        try {
+          await saveTokenToDatabase(
+            name,
+            ticker,
+            tokenAddress,
+            creatorWallet,
+            initialSupply,
+            description
+          );
+          console.log('Token saved to database successfully');
+        } catch (dbError) {
+          console.error('Failed to save token to database:', dbError);
+          // Don't throw here, we still want to return the address
+        }
+        
+        return tokenAddress;
       }
     } catch (error) {
       console.log('Error parsing log:', error);
@@ -135,8 +232,25 @@ export const getTokenAddressFromReceipt = (receipt: ethers.TransactionReceipt): 
       });
       
       if (parsed && parsed.name === 'TokenCreated') {
-        console.log('Found TokenCreated event in factory logs, token address:', parsed.args.tokenAddress);
-        return parsed.args.tokenAddress;
+        const tokenAddress = parsed.args.tokenAddress;
+        console.log('Found TokenCreated event in factory logs, token address:', tokenAddress);
+        
+        // Save token to database
+        try {
+          await saveTokenToDatabase(
+            name,
+            ticker,
+            tokenAddress,
+            creatorWallet,
+            initialSupply,
+            description
+          );
+          console.log('Token saved to database successfully');
+        } catch (dbError) {
+          console.error('Failed to save token to database:', dbError);
+        }
+        
+        return tokenAddress;
       }
     } catch (error) {
       console.log('Error parsing factory log:', error);

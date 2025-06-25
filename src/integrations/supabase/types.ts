@@ -9,144 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      checkin_history: {
+      tokens: {
         Row: {
-          bonus_points: number | null
-          checkin_date: string
+          contract_address: string
           created_at: string
+          creator_wallet: string
+          description: string | null
           id: string
-          points_earned: number
-          streak_day: number
-          wallet_address: string
+          initial_supply: number
+          name: string
+          ticker: string
         }
         Insert: {
-          bonus_points?: number | null
-          checkin_date?: string
+          contract_address: string
           created_at?: string
+          creator_wallet: string
+          description?: string | null
           id?: string
-          points_earned: number
-          streak_day: number
-          wallet_address: string
+          initial_supply: number
+          name: string
+          ticker: string
         }
         Update: {
-          bonus_points?: number | null
-          checkin_date?: string
+          contract_address?: string
           created_at?: string
+          creator_wallet?: string
+          description?: string | null
           id?: string
-          points_earned?: number
-          streak_day?: number
-          wallet_address?: string
-        }
-        Relationships: []
-      }
-      daily_checkins: {
-        Row: {
-          created_at: string
-          current_streak: number
-          id: string
-          last_checkin_date: string
-          total_points: number
-          updated_at: string
-          wallet_address: string
-        }
-        Insert: {
-          created_at?: string
-          current_streak?: number
-          id?: string
-          last_checkin_date?: string
-          total_points?: number
-          updated_at?: string
-          wallet_address: string
-        }
-        Update: {
-          created_at?: string
-          current_streak?: number
-          id?: string
-          last_checkin_date?: string
-          total_points?: number
-          updated_at?: string
-          wallet_address?: string
-        }
-        Relationships: []
-      }
-      user_posts: {
-        Row: {
-          content: string
-          created_at: string
-          engagement_score: number | null
-          id: string
-          likes_count: number | null
-          points_earned: number | null
-          posted_at: string
-          replies_count: number | null
-          retweets_count: number | null
-          wallet_address: string
-          x_post_id: string
-        }
-        Insert: {
-          content: string
-          created_at?: string
-          engagement_score?: number | null
-          id?: string
-          likes_count?: number | null
-          points_earned?: number | null
-          posted_at: string
-          replies_count?: number | null
-          retweets_count?: number | null
-          wallet_address: string
-          x_post_id: string
-        }
-        Update: {
-          content?: string
-          created_at?: string
-          engagement_score?: number | null
-          id?: string
-          likes_count?: number | null
-          points_earned?: number | null
-          posted_at?: string
-          replies_count?: number | null
-          retweets_count?: number | null
-          wallet_address?: string
-          x_post_id?: string
-        }
-        Relationships: []
-      }
-      x_accounts: {
-        Row: {
-          access_token: string
-          connected_at: string
-          id: string
-          refresh_token: string | null
-          updated_at: string
-          wallet_address: string
-          x_display_name: string | null
-          x_profile_image_url: string | null
-          x_user_id: string
-          x_username: string
-        }
-        Insert: {
-          access_token: string
-          connected_at?: string
-          id?: string
-          refresh_token?: string | null
-          updated_at?: string
-          wallet_address: string
-          x_display_name?: string | null
-          x_profile_image_url?: string | null
-          x_user_id: string
-          x_username: string
-        }
-        Update: {
-          access_token?: string
-          connected_at?: string
-          id?: string
-          refresh_token?: string | null
-          updated_at?: string
-          wallet_address?: string
-          x_display_name?: string | null
-          x_profile_image_url?: string | null
-          x_user_id?: string
-          x_username?: string
+          initial_supply?: number
+          name?: string
+          ticker?: string
         }
         Relationships: []
       }
@@ -155,28 +47,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      calculate_checkin_reward: {
-        Args: { streak_day: number }
-        Returns: {
-          base_points: number
-          bonus_points: number
-        }[]
-      }
-      has_x_account: {
-        Args: { user_wallet_address: string }
-        Returns: boolean
-      }
-      process_daily_checkin: {
-        Args: { user_wallet_address: string }
-        Returns: {
-          success: boolean
-          message: string
-          points_earned: number
-          bonus_points: number
-          new_streak: number
-          total_points: number
-        }[]
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never

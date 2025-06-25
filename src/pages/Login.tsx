@@ -2,12 +2,12 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { useWallet } from "@/contexts/WalletContext";
-import { Wallet } from "lucide-react";
+import { Wallet, Loader2 } from "lucide-react";
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 const Login = () => {
-  const { isConnected, connect } = useWallet();
+  const { isConnected, connect, isConnecting } = useWallet();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,11 +51,21 @@ const Login = () => {
               
               <Button
                 onClick={handleConnect}
+                disabled={isConnecting}
                 size="lg"
                 className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white mb-4"
               >
-                <Wallet className="mr-2 h-5 w-5" />
-                Connect MetaMask
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Connecting...
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="mr-2 h-5 w-5" />
+                    Connect MetaMask
+                  </>
+                )}
               </Button>
 
               <div className="mt-4 text-xs text-gray-500">

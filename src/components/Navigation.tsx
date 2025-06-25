@@ -7,7 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/contexts/WalletContext";
-import { Rocket, Compass, Coins, Bell, Wallet, ChevronDown, Loader2 } from "lucide-react";
+import { Rocket, Compass, Coins, Bell, Wallet, ChevronDown, Loader2, LayoutDashboard } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const Navigation = () => {
@@ -69,8 +69,8 @@ const Navigation = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
-                    variant="outline"
-                    className="border-avalanche-red text-white hover:bg-avalanche-gray-dark flex items-center space-x-2"
+                    variant="ghost"
+                    className="text-white hover:bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red"
                   >
                     <Wallet className="h-4 w-4" />
                     <span className="hidden sm:inline">{formatAddress(address!)}</span>
@@ -78,10 +78,20 @@ const Navigation = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-avalanche-gray-dark border-avalanche-gray-medium">
+                  <DropdownMenuItem asChild>
+                    <Link 
+                      to="/dashboard"
+                      className="text-white hover:bg-avalanche-gray-medium cursor-pointer flex items-center"
+                    >
+                      <LayoutDashboard className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={disconnect}
                     className="text-red-400 hover:bg-avalanche-gray-medium cursor-pointer"
                   >
+                    <Wallet className="h-4 w-4 mr-2" />
                     Disconnect Wallet
                   </DropdownMenuItem>
                 </DropdownMenuContent>

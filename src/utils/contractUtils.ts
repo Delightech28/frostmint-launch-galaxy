@@ -96,7 +96,8 @@ export const saveTokenToDatabase = async (
   contractAddress: string,
   creatorWallet: string,
   initialSupply: string,
-  description?: string
+  description?: string,
+  transactionHash?: string
 ) => {
   try {
     const { data, error } = await supabase
@@ -117,6 +118,7 @@ export const saveTokenToDatabase = async (
       throw error;
     }
 
+    console.log('Token saved to database successfully:', data);
     return data;
   } catch (error) {
     console.error('Error saving token to database:', error);
@@ -172,9 +174,12 @@ export const getTokenAddressFromReceipt = async (
   description?: string
 ): Promise<string | null> => {
   console.log('Receipt logs:', receipt.logs);
+  console.log('Transaction hash:', receipt.hash);
   
   // Create interface for parsing events
   const iface = new ethers.Interface(MEME_COIN_FACTORY_ABI);
+  
+  let tokenAddress: string | null = null;
   
   for (const log of receipt.logs) {
     try {
@@ -189,75 +194,66 @@ export const getTokenAddressFromReceipt = async (
       console.log('Parsed log:', parsed);
       
       if (parsed && parsed.name === 'TokenCreated') {
-        const tokenAddress = parsed.args.tokenAddress;
+        tokenAddress = parsed.args.tokenAddress;
         console.log('Found TokenCreated event, token address:', tokenAddress);
-        
-        // Save token to database
-        try {
-          await saveTokenToDatabase(
-            name,
-            ticker,
-            tokenAddress,
-            creatorWallet,
-            initialSupply,
-            description
-          );
-          console.log('Token saved to database successfully');
-        } catch (dbError) {
-          console.error('Failed to save token to database:', dbError);
-          // Don't throw here, we still want to return the address
-        }
-        
-        return tokenAddress;
+        break;
       }
     } catch (error) {
       console.log('Error parsing log:', error);
-      // Continue to next log if parsing fails
       continue;
     }
   }
   
   // Alternative approach: look for logs from the factory contract
-  const factoryLogs = receipt.logs.filter(log => 
-    log.address.toLowerCase() === MEME_COIN_FACTORY_ADDRESS.toLowerCase()
-  );
-  
-  console.log('Factory logs:', factoryLogs);
-  
-  for (const log of factoryLogs) {
-    try {
-      const parsed = iface.parseLog({
-        topics: log.topics,
-        data: log.data
-      });
-      
-      if (parsed && parsed.name === 'TokenCreated') {
-        const tokenAddress = parsed.args.tokenAddress;
-        console.log('Found TokenCreated event in factory logs, token address:', tokenAddress);
+  if (!tokenAddress) {
+    const factoryLogs = receipt.logs.filter(log => 
+      log.address.toLowerCase() === MEME_COIN_FACTORY_ADDRESS.toLowerCase()
+    );
+    
+    console.log('Factory logs:', factoryLogs);
+    
+    for (const log of factoryLogs) {
+      try {
+        const parsed = iface.parseLog({
+          topics: log.topics,
+          data: log.data
+        });
         
-        // Save token to database
-        try {
-          await saveTokenToDatabase(
-            name,
-            ticker,
-            tokenAddress,
-            creatorWallet,
-            initialSupply,
-            description
-          );
-          console.log('Token saved to database successfully');
-        } catch (dbError) {
-          console.error('Failed to save token to database:', dbError);
+        if (parsed && parsed.name === 'TokenCreated') {
+          tokenAddress = parsed.args.tokenAddress;
+          console.log('Found TokenCreated event in factory logs, token address:', tokenAddress);
+          break;
         }
-        
-        return tokenAddress;
+      } catch (error) {
+        console.log('Error parsing factory log:', error);
+        continue;
       }
-    } catch (error) {
-      console.log('Error parsing factory log:', error);
-      continue;
     }
   }
   
-  console.log('No TokenCreated event found in receipt');
-  return null;
+  // Save token to database regardless of whether we found the address
+  // Use transaction hash as fallback if no address found
+  const addressToSave = tokenAddress || `pending_${receipt.hash}`;
+  
+  try {
+    await saveTokenToDatabase(
+      name,
+      ticker,
+      addressToSave,
+      creatorWallet,
+      initialSupply,
+      description,
+      receipt.hash
+    );
+    console.log('Token saved to database successfully');
+  } catch (dbError) {
+    console.error('Failed to save token to database:', dbError);
+    // Don't throw here as transaction was successful
+  }
+  
+  if (!tokenAddress) {
+    console.log('No TokenCreated event found in receipt, but token was saved with tx hash');
+  }
+  
+  return tokenAddress;
 };

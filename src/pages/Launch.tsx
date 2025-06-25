@@ -72,6 +72,8 @@ const Launch = () => {
       toast.info("Transaction submitted. Waiting for confirmation...");
       const receipt = await tx.wait();
       
+      console.log("Transaction successful! Hash:", receipt.hash);
+      
       const tokenAddress = await getTokenAddressFromReceipt(
         receipt,
         tokenData.name,
@@ -81,15 +83,14 @@ const Launch = () => {
         tokenData.description
       );
       
-      if (tokenAddress) {
-        setCreatedTokenAddress(tokenAddress);
-        setShowSuccessModal(true);
-        toast.success("Token created successfully!");
-        // Reset form
-        setTokenData({ name: "", ticker: "", supply: "", description: "" });
-      } else {
-        toast.error("Token created but couldn't retrieve address. Check the explorer for your transaction.");
-      }
+      // Always show success since transaction was successful
+      setCreatedTokenAddress(tokenAddress || receipt.hash);
+      setShowSuccessModal(true);
+      toast.success("Token created successfully!");
+      
+      // Reset form
+      setTokenData({ name: "", ticker: "", supply: "", description: "" });
+      
     } catch (error: any) {
       console.error("Error creating token:", error);
       if (error.code === 4001) {

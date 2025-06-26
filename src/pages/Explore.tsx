@@ -277,31 +277,33 @@ const Explore = () => {
         )}
       </div>
       
-      <style jsx global>{`
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        
-        /* Custom scrollbar styling */
-        ::-webkit-scrollbar {
-          width: 6px;
-          height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-          background: #1a1a1a;
-        }
-        ::-webkit-scrollbar-thumb {
-          background: #e53e3e;
-          border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-          background: #c53030;
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+          }
+          
+          /* Custom scrollbar styling */
+          ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+          }
+          ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+          }
+          ::-webkit-scrollbar-thumb {
+            background: #e53e3e;
+            border-radius: 3px;
+          }
+          ::-webkit-scrollbar-thumb:hover {
+            background: #c53030;
+          }
+        `
+      }} />
     </div>
   );
 };

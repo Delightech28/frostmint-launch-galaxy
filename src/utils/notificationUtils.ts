@@ -71,8 +71,14 @@ export const useNotifications = () => {
 
         if (error) throw error;
 
-        setNotifications(data || []);
-        setUnreadCount(data?.filter(n => !n.read).length || 0);
+        // Cast the data to match our interface since the database type is more flexible
+        const typedNotifications = (data || []).map(notification => ({
+          ...notification,
+          type: notification.type as 'token_created' | 'token_purchased'
+        })) as Notification[];
+
+        setNotifications(typedNotifications);
+        setUnreadCount(typedNotifications.filter(n => !n.read).length);
       } catch (error) {
         console.error('Error fetching notifications:', error);
       }
@@ -92,7 +98,10 @@ export const useNotifications = () => {
           filter: `user_wallet=eq.${address}`,
         },
         (payload) => {
-          const newNotification = payload.new as Notification;
+          const newNotification = {
+            ...payload.new,
+            type: payload.new.type as 'token_created' | 'token_purchased'
+          } as Notification;
           setNotifications(prev => [newNotification, ...prev]);
           setUnreadCount(prev => prev + 1);
         }
@@ -106,7 +115,10 @@ export const useNotifications = () => {
           filter: `user_wallet=eq.${address}`,
         },
         (payload) => {
-          const updatedNotification = payload.new as Notification;
+          const updatedNotification = {
+            ...payload.new,
+            type: payload.new.type as 'token_created' | 'token_purchased'
+          } as Notification;
           setNotifications(prev => 
             prev.map(n => n.id === updatedNotification.id ? updatedNotification : n)
           );

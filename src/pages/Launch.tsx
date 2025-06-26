@@ -1,202 +1,383 @@
-import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { CheckCircle2, XCircle } from "lucide-react";
-import { useWallet } from "@/contexts/WalletContext";
-import { createMemeCoin } from "@/utils/contractUtils";
+import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useQueryClient } from "@tanstack/react-query";
-import { notifyTokenCreated } from "@/utils/notificationUtils";
+import { useWallet } from "@/contexts/WalletContext";
+import { createMemeCoin, getTokenAddressFromReceipt } from "@/utils/contractUtils";
+import TokenCreatedModal from "@/components/TokenCreatedModal";
 
-const LaunchToken = () => {
+const Launch = () => {
   const { isConnected, address } = useWallet();
-  const [tokenName, setTokenName] = useState("");
-  const [ticker, setTicker] = useState("");
-  const [initialSupply, setInitialSupply] = useState("");
-  const [description, setDescription] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const queryClient = useQueryClient();
+  const [createdTokenAddress, setCreatedTokenAddress] = useState("");
+  
+  const [tokenData, setTokenData] = useState({
+    name: "",
+    ticker: "",
+    supply: "",
+    description: "",
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const [nftData, setNftData] = useState({
+    name: "",
+    description: "",
+    quantity: "",
+    image: null as File | null,
+  });
+
+  const handleTickerChange = (value: string) => {
+    // Auto-format ticker: 3-6 characters, uppercase, letters only
+    const formatted = value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
+    setTokenData({...tokenData, ticker: formatted});
+  };
+
+  const isValidTicker = (ticker: string) => {
+    return ticker.length >= 3 && ticker.length <= 6;
+  };
+
+  const handleCreateToken = async () => {
     if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
       return;
     }
 
-    if (!tokenName.trim() || !ticker.trim() || !initialSupply.trim()) {
+    if (!tokenData.name || !tokenData.ticker || !tokenData.supply) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    setIsCreating(true);
-    setError("");
+    if (!isValidTicker(tokenData.ticker)) {
+      toast.error("Ticker must be 3-6 characters");
+      return;
+    }
 
     try {
-      console.log('Starting token creation process...');
+      setIsCreating(true);
+      toast.info("Creating your meme coin...");
       
       const tx = await createMemeCoin(
-        tokenName.trim(),
-        ticker.trim(),
-        initialSupply.trim(),
+        tokenData.name,
+        tokenData.ticker,
+        tokenData.supply,
         address,
-        description.trim() || undefined
+        tokenData.description
       );
-
-      console.log('Transaction sent:', tx.hash);
-      toast.success("Transaction submitted! Waiting for confirmation...");
-
+      
+      toast.info("Transaction submitted. Waiting for confirmation...");
       const receipt = await tx.wait();
-      console.log('Transaction confirmed:', receipt);
-
-      if (receipt.status === 1) {
-        // Use the new notification system
-        notifyTokenCreated(tokenName.trim(), ticker.trim());
-        
-        // Show success modal
-        setShowSuccessModal(true);
-        
-        // Reset form
-        setTokenName("");
-        setTicker("");
-        setInitialSupply("");
-        setDescription("");
-        
-        // Refresh tokens query
-        queryClient.invalidateQueries({ queryKey: ['userTokens'] });
-      } else {
-        throw new Error('Transaction failed');
-      }
+      
+      console.log("Transaction successful! Hash:", receipt.hash);
+      
+      const tokenAddress = await getTokenAddressFromReceipt(
+        receipt,
+        tokenData.name,
+        tokenData.ticker,
+        address,
+        tokenData.supply,
+        tokenData.description
+      );
+      
+      // Always show success since transaction was successful
+      setCreatedTokenAddress(tokenAddress || receipt.hash);
+      setShowSuccessModal(true);
+      toast.success("Token created successfully!");
+      
+      // Reset form
+      setTokenData({ name: "", ticker: "", supply: "", description: "" });
+      
     } catch (error: any) {
-      console.error('Token creation error:', error);
-      let errorMessage = "Failed to create token. Please try again.";
-      
-      if (error.message?.includes('User denied transaction signature')) {
-        errorMessage = "Transaction was cancelled by user.";
-      } else if (error.message?.includes('insufficient funds')) {
-        errorMessage = "Insufficient AVAX balance for transaction.";
-      } else if (error.message?.includes('already exists')) {
-        errorMessage = error.message;
+      console.error("Error creating token:", error);
+      if (error.code === 4001) {
+        toast.error("Transaction rejected by user");
+      } else if (error.code === -32603) {
+        toast.error("Insufficient funds for minting fee (0.01 AVAX required)");
+      } else if (error.message && error.message.includes('already exists')) {
+        toast.error(error.message);
+      } else {
+        toast.error("Failed to create token. Please try again.");
       }
-      
-      setError(errorMessage);
-      toast.error(errorMessage);
     } finally {
       setIsCreating(false);
     }
+  };
+
+  const handleLaunchToken = (type: string) => {
+    toast.success(`${type} launch initiated! (Demo mode)`);
   };
 
   return (
     <div className="min-h-screen bg-black">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Launch Your Meme Coin</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Launch Your Project</h1>
           <p className="text-gray-300">
-            Create and deploy your own meme coin on the Avalanche network.
+            Create meme coins or NFT collections on Avalanche in seconds
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Launch Form */}
           <div>
-            <Label htmlFor="tokenName" className="text-white">
-              Token Name
-            </Label>
-            <Input
-              type="text"
-              id="tokenName"
-              placeholder="DogeMoon"
-              value={tokenName}
-              onChange={(e) => setTokenName(e.target.value)}
-              className="bg-avalanche-gray-dark border-avalanche-gray-medium text-white"
-            />
-          </div>
-          <div>
-            <Label htmlFor="ticker" className="text-white">
-              Ticker Symbol
-            </Label>
-            <Input
-              type="text"
-              id="ticker"
-              placeholder="DMOON"
-              value={ticker}
-              onChange={(e) => setTicker(e.target.value)}
-              className="bg-avalanche-gray-dark border-avalanche-gray-medium text-white"
-            />
-          </div>
-          <div>
-            <Label htmlFor="initialSupply" className="text-white">
-              Initial Supply
-            </Label>
-            <Input
-              type="number"
-              id="initialSupply"
-              placeholder="1000000"
-              value={initialSupply}
-              onChange={(e) => setInitialSupply(e.target.value)}
-              className="bg-avalanche-gray-dark border-avalanche-gray-medium text-white"
-            />
-          </div>
-          <div>
-            <Label htmlFor="description" className="text-white">
-              Description (Optional)
-            </Label>
-            <Textarea
-              id="description"
-              placeholder="The next big meme coin!"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="bg-avalanche-gray-dark border-avalanche-gray-medium text-white resize-none"
-            />
+            <Tabs defaultValue="fun-coin" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-avalanche-gray-dark">
+                <TabsTrigger value="fun-coin" className="data-[state=active]:bg-avalanche-red">
+                  Fun Coin
+                </TabsTrigger>
+                <TabsTrigger value="trading-coin" className="data-[state=active]:bg-avalanche-red">
+                  Trading Coin
+                </TabsTrigger>
+                <TabsTrigger value="nft" className="data-[state=active]:bg-avalanche-red">
+                  NFT Collection
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="fun-coin" className="space-y-4 mt-6">
+                <Card className="bg-avalanche-gray-dark border-avalanche-gray-medium">
+                  <CardHeader>
+                    <CardTitle className="text-white">Fun Coin Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="fun-name" className="text-gray-300">Token Name *</Label>
+                      <Input
+                        id="fun-name"
+                        placeholder="e.g., DogeMoon"
+                        value={tokenData.name}
+                        onChange={(e) => setTokenData({...tokenData, name: e.target.value})}
+                        className="bg-black border-avalanche-gray-medium text-white"
+                        maxLength={20}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="fun-ticker" className="text-gray-300">
+                        Ticker Symbol * <span className="text-xs text-gray-400">(3-6 letters only)</span>
+                      </Label>
+                      <Input
+                        id="fun-ticker"
+                        placeholder="e.g., DMOON"
+                        value={tokenData.ticker}
+                        onChange={(e) => handleTickerChange(e.target.value)}
+                        className={`bg-black border-avalanche-gray-medium text-white ${
+                          tokenData.ticker && !isValidTicker(tokenData.ticker) 
+                            ? 'border-red-500' 
+                            : ''
+                        }`}
+                        maxLength={6}
+                      />
+                      {tokenData.ticker && !isValidTicker(tokenData.ticker) && (
+                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
+                      )}
+                    </div>
+                    <div>
+                      <Label htmlFor="fun-supply" className="text-gray-300">Initial Supply *</Label>
+                      <Input
+                        id="fun-supply"
+                        placeholder="e.g., 1000000"
+                        value={tokenData.supply}
+                        onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
+                        className="bg-black border-avalanche-gray-medium text-white"
+                        type="number"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="fun-description" className="text-gray-300">Description</Label>
+                      <Textarea
+                        id="fun-description"
+                        placeholder="Tell the community about your meme coin..."
+                        value={tokenData.description}
+                        onChange={(e) => setTokenData({...tokenData, description: e.target.value})}
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    
+                    <div className="bg-avalanche-gray-medium p-4 rounded-lg">
+                      <p className="text-gray-300 text-sm mb-2">Minting Fee: <span className="text-avalanche-red font-semibold">0.01 AVAX</span></p>
+                      <p className="text-gray-400 text-xs">This fee covers the gas costs for deploying your token contract on Avalanche.</p>
+                    </div>
+                    
+                    <Button 
+                      onClick={handleCreateToken}
+                      disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply || !isValidTicker(tokenData.ticker)}
+                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
+                    >
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Token...
+                        </>
+                      ) : (
+                        "Create Token"
+                      )}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="trading-coin" className="space-y-4 mt-6">
+                <Card className="bg-avalanche-gray-dark border-avalanche-gray-medium">
+                  <CardHeader>
+                    <CardTitle className="text-white">Trading Coin Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="trading-name" className="text-gray-300">Token Name</Label>
+                      <Input
+                        id="trading-name"
+                        placeholder="e.g., AvalancheGem"
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol</Label>
+                      <Input
+                        id="trading-ticker"
+                        placeholder="e.g., AGEM"
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="trading-supply" className="text-gray-300">Total Supply</Label>
+                      <Input
+                        id="trading-supply"
+                        placeholder="e.g., 10000000"
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="initial-liquidity" className="text-gray-300">Initial Liquidity (AVAX)</Label>
+                      <Input
+                        id="initial-liquidity"
+                        placeholder="e.g., 5"
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleLaunchToken("Trading Coin")}
+                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+                    >
+                      Launch Trading Coin
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="nft" className="space-y-4 mt-6">
+                <Card className="bg-avalanche-gray-dark border-avalanche-gray-medium">
+                  <CardHeader>
+                    <CardTitle className="text-white">NFT Collection Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <Label htmlFor="nft-name" className="text-gray-300">Collection Name</Label>
+                      <Input
+                        id="nft-name"
+                        placeholder="e.g., Frost Creatures"
+                        value={nftData.name}
+                        onChange={(e) => setNftData({...nftData, name: e.target.value})}
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="nft-quantity" className="text-gray-300">Total Quantity</Label>
+                      <Input
+                        id="nft-quantity"
+                        placeholder="e.g., 1000"
+                        value={nftData.quantity}
+                        onChange={(e) => setNftData({...nftData, quantity: e.target.value})}
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="nft-description" className="text-gray-300">Description</Label>
+                      <Textarea
+                        id="nft-description"
+                        placeholder="Describe your NFT collection..."
+                        value={nftData.description}
+                        onChange={(e) => setNftData({...nftData, description: e.target.value})}
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="nft-image" className="text-gray-300">Upload Image</Label>
+                      <Input
+                        id="nft-image"
+                        type="file"
+                        accept="image/*"
+                        className="bg-black border-avalanche-gray-medium text-white"
+                      />
+                    </div>
+                    <Button 
+                      onClick={() => handleLaunchToken("NFT Collection")}
+                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+                    >
+                      Launch NFT Collection
+                    </Button>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
           </div>
 
-          {error && (
-            <div className="text-red-500 flex items-center space-x-2">
-              <XCircle className="h-4 w-4" />
-              <span>{error}</span>
-            </div>
-          )}
-
-          <Button
-            type="submit"
-            disabled={isCreating}
-            className="bg-avalanche-red hover:bg-avalanche-red-dark text-white w-full"
-          >
-            {isCreating ? "Creating..." : "Launch Token"}
-          </Button>
-        </form>
-
-        {/* Success Modal */}
-        <Dialog open={showSuccessModal} onOpenChange={() => setShowSuccessModal(false)}>
-          <DialogContent className="bg-avalanche-gray-dark border-avalanche-gray-medium text-white">
-            <DialogHeader>
-              <DialogTitle className="text-lg flex items-center space-x-2">
-                <CheckCircle2 className="text-green-500 h-5 w-5" />
-                <span>Token Created Successfully!</span>
-              </DialogTitle>
-              <DialogDescription>
-                Your meme coin has been successfully created and deployed on the Avalanche network.
-              </DialogDescription>
-            </DialogHeader>
-            <Button onClick={() => setShowSuccessModal(false)} className="bg-avalanche-red hover:bg-avalanche-red-dark text-white w-full">
-              Close
-            </Button>
-          </DialogContent>
-        </Dialog>
+          {/* Live Preview */}
+          <div>
+            <Card className="bg-avalanche-gray-dark border-avalanche-red">
+              <CardHeader>
+                <CardTitle className="text-white">Live Preview</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="bg-black p-6 rounded-lg border border-avalanche-gray-medium">
+                  <div className="text-center">
+                    <div className="w-16 h-16 bg-avalanche-red rounded-full mx-auto mb-4 flex items-center justify-center">
+                      <span className="text-white font-bold text-xl">
+                        {tokenData.ticker ? tokenData.ticker.charAt(0) : "?"}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {tokenData.name || "Your Token Name"}
+                    </h3>
+                    <p className="text-gray-400 text-sm mb-4">
+                      ${tokenData.ticker || "TICKER"}
+                    </p>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <div className="text-gray-400">Supply</div>
+                        <div className="text-white font-semibold">
+                          {tokenData.supply ? Number(tokenData.supply).toLocaleString() : "1,000,000"}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-gray-400">Network</div>
+                        <div className="text-avalanche-red font-semibold">Avalanche</div>
+                      </div>
+                    </div>
+                    {tokenData.description && (
+                      <div className="mt-4 p-3 bg-avalanche-gray-medium rounded text-left">
+                        <p className="text-gray-300 text-sm">{tokenData.description}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
+      
+      <TokenCreatedModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        tokenAddress={createdTokenAddress}
+        tokenName={tokenData.name}
+        tokenTicker={tokenData.ticker}
+      />
     </div>
   );
 };
 
-export default LaunchToken;
+export default Launch;

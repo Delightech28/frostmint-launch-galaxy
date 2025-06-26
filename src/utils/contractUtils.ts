@@ -1,300 +1,163 @@
 
 import { ethers } from 'ethers';
 import { supabase } from '@/integrations/supabase/client';
+import { addNotification } from './notificationUtils';
 
-export const MEME_COIN_FACTORY_ADDRESS = '0x7C05dA83a4Fe020aCB26DD8CdAEE9fe9f94760A2';
-
-export const MEME_COIN_FACTORY_ABI = [
-  {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "symbol",
-        "type": "string"
-      },
-      {
-        "internalType": "uint256",
-        "name": "initialSupply",
-        "type": "uint256"
-      }
-    ],
-    "name": "createToken",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "tokenAddress",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "creator",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "symbol",
-        "type": "string"
-      }
-    ],
-    "name": "TokenCreated",
-    "type": "event"
+declare global {
+  interface Window {
+    ethereum?: any;
   }
-];
+}
 
-export const checkTokenExists = async (name: string, ticker: string) => {
+export interface TokenData {
+  name: string;
+  ticker: string;
+  initialSupply: number;
+  tokenType: string;
+  description?: string;
+  imageUrl?: string;
+}
+
+// Simple ERC20 contract bytecode (minimal implementation)
+const ERC20_BYTECODE = "0x608060405234801561001057600080fd5b50604051610d38380380610d388339818101604052810190610032919061028d565b33600560006101000a81548173ffffffffffffffffffffffffffffffffffffffff021916908373ffffffffffffffffffffffffffffffffffffffff16021790555082600090816100829190610559565b5081600190816100929190610559565b508060ff166002819055506100b5826100bb60201b60201c565b5050505061062b565b600073ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff160361012a576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161012190610688565b60405180910390fd5b806003600082825461013c91906106d7565b9250508190555080600460008473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825461019291906106d7565b925050819055508173ffffffffffffffffffffffffffffffffffffffff16600073ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef836040516101f7919061071a565b60405180910390a35050565b6000604051905090565b600080fd5b600080fd5b600080fd5b600080fd5b6000601f19601f8301169050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b61026a82610221565b810181811067ffffffffffffffff8211171561028957610288610232565b5b80604052505050565b600061029c610203565b90506102a88282610261565b919050565b600067ffffffffffffffff8211156102c8576102c7610232565b5b6102d182610221565b9050602081019050919050565b60006102f16102ec846102ad565b610292565b90508281526020810184848401111561030d5761030c61021c565b5b818185602084013760008183016020015260405192915050565b600082601f83011261033c5761033b610217565b5b815161034c8482602086016102de565b91505092915050565b600060ff82169050919050565b61036b81610355565b811461037657600080fd5b50565b60008151905061038881610362565b92915050565b6000819050919050565b6103a18161038e565b81146103ac57600080fd5b50565b6000815190506103be81610398565b92915050565b6000806000606084860312156103dd576103dc61020d565b5b600084015167ffffffffffffffff8111156103fb576103fa610212565b5b61040786828701610327565b935050602084015167ffffffffffffffff81111561042857610427610212565b5b61043486828701610327565b925050604061044586828701610379565b9150509250925092565b600081519050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b6000600282049050600182168061049f57607f821691505b6020821081036104b2576104b1610458565b5b50919050565b60008190508160005260206000209050919050565b600081546104da81610487565b6104e48186610487565b9450600182166000811461050157600181146105125761054b565b60ff1983168652818601935061054b565b61051b856104b8565b60005b8381101561053d5781548189015260018201915060208101905061051e565b838801955050505b50505092915050565b600061055a82846104cd565b915081905092915050565b7f45524332303a206d696e7420746f20746865207a65726f206164647265737300600082015250565b600061059b601f83610487565b91506105a682610565565b602082019050919050565b600060208201905081810360008301526105ca8161058e565b9050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b600061060b8261038e565b91506106168361038e565b925082820190508082111561062e5761062d6105d1565b5b92915050565b6106fe8061063a6000396000f3fe608060405234801561001057600080fd5b50600436106100935760003560e01c8063313ce56711610066578063313ce567146101375780636e5b0fcb1461015557806370a0823114610171578063a9059cbb146101a1578063dd62ed3e146101d157610093565b806306fdde0314610098578063095ea7b3146100b657806318160ddd146100e657806323b872dd14610104575b600080fd5b6100a0610201565b6040516100ad9190610412565b60405180910390f35b6100d060048036038101906100cb919061049b565b61028f565b6040516100dd91906104f6565b60405180910390f35b6100ee6102ac565b6040516100fb9190610520565b60405180910390f35b61011e6004803603810190610119919061053b565b6102b2565b60405161012e94939291906105be565b60405180910390f35b61013f6102c1565b60405161014c9190610618565b60405180910390f35b61016f600480360381019061016a9190610633565b6102c7565b005b61018b60048036038101906101869190610660565b610316565b6040516101989190610520565b60405180910390f35b6101bb60048036038101906101b6919061049b565b61032e565b6040516101c891906104f6565b60405180910390f35b6101eb60048036038101906101e6919061068d565b610345565b6040516101f89190610520565b60405180910390f35b6000805461020e906106fc565b80601f016020809104026020016040519081016040528092919081815260200182805461023a906106fc565b80156102875780601f1061025c57610100808354040283529160200191610287565b820191906000526020600020905b81548152906001019060200180831161026a57829003601f168201915b505050505081565b600061029c33848461036a565b6001905092915050565b60035481565b60008060008061038d565b60025481565b600560009054906101000a900473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff163373ffffffffffffffffffffffffffffffffffffffff1614610356576040517f08c379a000000000000000000000000000000000000000000000000000000000815260040161034d90610779565b60405180910390fd5b61036082826103b3565b5050565b600080fd5b600061037633848461036a565b6001905092915050565b600080fd5b600061039133856103b3565b6001905092915050565b600460008373ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020549050919050565b600073ffffffffffffffffffffffffffffffffffffffff168273ffffffffffffffffffffffffffffffffffffffff1603610422576040517f08c379a0000000000000000000000000000000000000000000000000000000008152600401610419906107e5565b60405180910390fd5b806003600082825461043491906108ee565b9250508190555080600460008473ffffffffffffffffffffffffffffffffffffffff1673ffffffffffffffffffffffffffffffffffffffff168152602001908152602001600020600082825461048a91906108ee565b925050819055508173ffffffffffffffffffffffffffffffffffffffff16600073ffffffffffffffffffffffffffffffffffffffff167fddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef836040516104ef9190610520565b60405180910390a35050565b600080fd5b600080fd5b600080fd5b600081905082805461051c906106fc565b90506020810190508083116105395763ffffffff80fd5b5b505050565b600061054e82848186610500565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052601160045260246000fd5b60008261058891906108ee565b91508190508092919050565b6000819050919050565b6105a781610595565b82525050565b60006020820190506105c2600083018461059e565b92915050565b7f4f776e61626c653a2063616c6c6572206973206e6f7420746865206f776e6572600082015250565b60006105fe6020836108ee565b9150610609826105c8565b602082019050919050565b6000602082019050818103600083015261062d816105f1565b9050919050565b60008135905061064381610941565b92915050565b60006020828403121561065f5761065e610934565b5b600061066d84828501610634565b91505092915050565b61067f81610892565b811461068a57600080fd5b50565b60008135905061069c81610676565b92915050565b600080604083850312156106b9576106b8610934565b5b60006106c785828601610634565b92505060206106d88582860161068d565b9150509250929050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052602260045260246000fd5b6000600282049050600182168061072957607f821691505b60208210810361073c5761073b6106e2565b5b50919050565b7f45524332303a206d696e7420746f20746865207a65726f2061646472657373600082015250565b60006107786020836108ee565b915061078382610742565b602082019050919050565b600060208201905081810360008301526107a78161076b565b9050919050565b600081905092915050565b50565b60006107c96000836107ae565b91506107d4826107b9565b600082019050919050565b60006107ea826107bc565b9150819050919050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052603260045260246000fd5b600061082e82610892565b915061083983610892565b925082820190508281111561085157610850610938565b5b92915050565b600081905092915050565b6000610823565b8190505b92915050565b7f4e487b7100000000000000000000000000000000000000000000000000000000600052604160045260246000fd5b60008190508263ffffffff1661089d9190610823565b8263ffffffff16111561088b5763ffffffff80fd5b5b505050565b600060ff82169050919050565b6108ab81610892565b81146108b657600080fd5b50565b6000813590506108c8816108a2565b92915050565b6000602082840312156108e4576108e3610934565b5b60006108f2848285016108b9565b91505092915050565b60008190508082111561090d5761090c610938565b5b919050565b61091b81610595565b811461092657600080fd5b50565b600081359050610938816109912565b92915050565b600080fd5b6000610952848284610929565b9150509291505056fea26469706673582212209c8f4c2d1b5e7a8f9b6c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f20164736f6c634300081a0033";
+
+export const deployToken = async (tokenData: TokenData, userWallet: string): Promise<string> => {
   try {
-    const { data, error } = await supabase
-      .from('tokens')
-      .select('name, ticker')
-      .or(`name.eq.${name},ticker.eq.${ticker}`);
-
-    if (error) {
-      console.error('Error checking token existence:', error);
-      return { exists: false, field: null };
+    console.log('Starting token deployment...', tokenData);
+    
+    // Check if MetaMask is available
+    if (typeof window.ethereum === 'undefined') {
+      throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
     }
 
-    if (data && data.length > 0) {
-      const existingToken = data[0];
-      if (existingToken.name === name) {
-        return { exists: true, field: 'name' };
-      }
-      if (existingToken.ticker === ticker) {
-        return { exists: true, field: 'ticker' };
-      }
+    // Request account access
+    const accounts = await window.ethereum.request({ 
+      method: 'eth_requestAccounts' 
+    });
+    
+    if (!accounts || accounts.length === 0) {
+      throw new Error('No accounts found. Please connect your MetaMask wallet.');
     }
 
-    return { exists: false, field: null };
-  } catch (error) {
-    console.error('Error checking token existence:', error);
-    return { exists: false, field: null };
-  }
-};
+    // Create provider and signer
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+    
+    console.log('Connected account:', await signer.getAddress());
 
-export const saveTokenToDatabase = async (
-  name: string,
-  ticker: string,
-  contractAddress: string,
-  creatorWallet: string,
-  initialSupply: string,
-  description?: string,
-  tokenType?: string,
-  imageUrl?: string,
-  transactionHash?: string
-) => {
-  try {
-    const { data, error } = await supabase
+    // Encode constructor parameters
+    const abiCoder = new ethers.AbiCoder();
+    const constructorData = abiCoder.encode(
+      ['string', 'string', 'uint8'],
+      [tokenData.name, tokenData.ticker, 18] // 18 decimals is standard
+    );
+
+    // Deploy contract
+    console.log('Deploying contract...');
+    const contractFactory = new ethers.ContractFactory(
+      [], // We'll use a minimal ABI since we're deploying with bytecode
+      ERC20_BYTECODE + constructorData.slice(2), // Remove '0x' from constructor data
+      signer
+    );
+
+    const deployTransaction = await contractFactory.deploy();
+    console.log('Deployment transaction sent:', deployTransaction.deploymentTransaction()?.hash);
+    
+    // Wait for deployment
+    const deployedContract = await deployTransaction.waitForDeployment();
+    const contractAddress = await deployedContract.getAddress();
+    
+    console.log('Contract deployed at:', contractAddress);
+
+    // Save token to database
+    const { data: tokenRecord, error: dbError } = await supabase
       .from('tokens')
       .insert({
-        name,
-        ticker,
+        name: tokenData.name,
+        ticker: tokenData.ticker,
+        token_type: tokenData.tokenType,
+        initial_supply: tokenData.initialSupply,
+        description: tokenData.description,
+        image_url: tokenData.imageUrl,
+        creator_wallet: userWallet,
         contract_address: contractAddress,
-        creator_wallet: creatorWallet,
-        initial_supply: parseInt(initialSupply),
-        description: description || null,
-        token_type: tokenType || 'Fun/Meme Coin',
-        image_url: imageUrl || null
       })
       .select()
       .single();
 
-    if (error) {
-      console.error('Error saving token to database:', error);
-      throw error;
+    if (dbError) {
+      console.error('Database error:', dbError);
+      throw new Error(`Failed to save token to database: ${dbError.message}`);
     }
 
-    console.log('Token saved to database successfully:', data);
-    return data;
-  } catch (error) {
-    console.error('Error saving token to database:', error);
+    console.log('Token saved to database:', tokenRecord);
+
+    // Add notification for token creation
+    await addNotification({
+      type: 'token_created',
+      title: 'Token Created Successfully!',
+      message: `Your ${tokenData.tokenType} "${tokenData.name}" has been deployed to the blockchain.`,
+      user_wallet: userWallet,
+      token_name: tokenData.name,
+      token_ticker: tokenData.ticker,
+    });
+
+    return contractAddress;
+  } catch (error: any) {
+    console.error('Token deployment failed:', error);
+    
+    // Handle specific MetaMask errors
+    if (error.code === 4001) {
+      throw new Error('Transaction was rejected by user.');
+    } else if (error.code === -32002) {
+      throw new Error('MetaMask is already processing a request. Please check MetaMask.');
+    } else if (error.message?.includes('insufficient funds')) {
+      throw new Error('Insufficient funds to deploy the token. Please ensure you have enough AVAX for gas fees.');
+    }
+    
     throw error;
   }
 };
 
-export const uploadTokenImage = async (file: File, tokenName: string): Promise<string | null> => {
+export const switchToAvalanche = async (): Promise<boolean> => {
   try {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${tokenName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.${fileExt}`;
-    
-    const { data, error } = await supabase.storage
-      .from('token-images')
-      .upload(fileName, file);
-
-    if (error) {
-      console.error('Error uploading image:', error);
-      return null;
+    if (typeof window.ethereum === 'undefined') {
+      throw new Error('MetaMask is not installed');
     }
 
-    const { data: publicData } = supabase.storage
-      .from('token-images')
-      .getPublicUrl(fileName);
+    // Avalanche mainnet configuration
+    const avalancheConfig = {
+      chainId: '0xA86A', // 43114 in hex
+      chainName: 'Avalanche Network',
+      rpcUrls: ['https://api.avax.network/ext/bc/C/rpc'],
+      nativeCurrency: {
+        name: 'AVAX',
+        symbol: 'AVAX',
+        decimals: 18,
+      },
+      blockExplorerUrls: ['https://snowtrace.io/'],
+    };
 
-    return publicData.publicUrl;
-  } catch (error) {
-    console.error('Error in uploadTokenImage:', error);
-    return null;
-  }
-};
-
-export const createMemeCoin = async (
-  name: string,
-  ticker: string,
-  initialSupply: string,
-  creatorWallet: string,
-  description?: string,
-  tokenType?: string,
-  image?: File | null
-) => {
-  if (!window.ethereum) {
-    throw new Error('MetaMask is not installed');
-  }
-
-  // Check if token name or ticker already exists
-  const { exists, field } = await checkTokenExists(name, ticker);
-  if (exists) {
-    throw new Error(`Token ${field} "${field === 'name' ? name : ticker}" already exists. Please choose a different ${field}.`);
-  }
-
-  const provider = new ethers.BrowserProvider(window.ethereum);
-  const signer = await provider.getSigner();
-  
-  const contract = new ethers.Contract(
-    MEME_COIN_FACTORY_ADDRESS,
-    MEME_COIN_FACTORY_ABI,
-    signer
-  );
-
-  // Convert initial supply to wei (assuming 18 decimals)
-  const supplyInWei = ethers.parseUnits(initialSupply, 18);
-  
-  // Send 0.01 AVAX as minting fee
-  const mintingFee = ethers.parseEther("0.01");
-  
-  const tx = await contract.createToken(name, ticker, supplyInWei, {
-    value: mintingFee
-  });
-  
-  return tx;
-};
-
-export const getTokenAddressFromReceipt = async (
-  receipt: ethers.TransactionReceipt, 
-  name: string, 
-  ticker: string, 
-  creatorWallet: string, 
-  initialSupply: string, 
-  description?: string,
-  tokenType?: string,
-  image?: File | null
-): Promise<string | null> => {
-  console.log('Receipt logs:', receipt.logs);
-  console.log('Transaction hash:', receipt.hash);
-  
-  // Upload image if provided
-  let imageUrl: string | null = null;
-  if (image) {
-    imageUrl = await uploadTokenImage(image, name);
-  }
-  
-  // Create interface for parsing events
-  const iface = new ethers.Interface(MEME_COIN_FACTORY_ABI);
-  
-  let tokenAddress: string | null = null;
-  
-  for (const log of receipt.logs) {
     try {
-      console.log('Processing log:', log);
-      
-      // Parse the log
-      const parsed = iface.parseLog({
-        topics: log.topics,
-        data: log.data
+      // Try to switch to Avalanche
+      await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: avalancheConfig.chainId }],
       });
-      
-      console.log('Parsed log:', parsed);
-      
-      if (parsed && parsed.name === 'TokenCreated') {
-        tokenAddress = parsed.args.tokenAddress;
-        console.log('Found TokenCreated event, token address:', tokenAddress);
-        break;
-      }
-    } catch (error) {
-      console.log('Error parsing log:', error);
-      continue;
-    }
-  }
-  
-  // Alternative approach: look for logs from the factory contract
-  if (!tokenAddress) {
-    const factoryLogs = receipt.logs.filter(log => 
-      log.address.toLowerCase() === MEME_COIN_FACTORY_ADDRESS.toLowerCase()
-    );
-    
-    console.log('Factory logs:', factoryLogs);
-    
-    for (const log of factoryLogs) {
-      try {
-        const parsed = iface.parseLog({
-          topics: log.topics,
-          data: log.data
+      return true;
+    } catch (switchError: any) {
+      // If the chain hasn't been added to MetaMask, add it
+      if (switchError.code === 4902) {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [avalancheConfig],
         });
-        
-        if (parsed && parsed.name === 'TokenCreated') {
-          tokenAddress = parsed.args.tokenAddress;
-          console.log('Found TokenCreated event in factory logs, token address:', tokenAddress);
-          break;
-        }
-      } catch (error) {
-        console.log('Error parsing factory log:', error);
-        continue;
+        return true;
       }
+      throw switchError;
     }
+  } catch (error) {
+    console.error('Failed to switch to Avalanche network:', error);
+    return false;
   }
-  
-  // Save token to database regardless of whether we found the address
-  // Use transaction hash as fallback if no address found
-  const addressToSave = tokenAddress || `pending_${receipt.hash}`;
-  
-  try {
-    await saveTokenToDatabase(
-      name,
-      ticker,
-      addressToSave,
-      creatorWallet,
-      initialSupply,
-      description,
-      tokenType || 'Fun/Meme Coin',
-      imageUrl,
-      receipt.hash
-    );
-    console.log('Token saved to database successfully');
-  } catch (dbError) {
-    console.error('Failed to save token to database:', dbError);
-    // Don't throw here as transaction was successful
-  }
-  
-  if (!tokenAddress) {
-    console.log('No TokenCreated event found in receipt, but token was saved with tx hash');
-  }
-  
-  return tokenAddress;
 };

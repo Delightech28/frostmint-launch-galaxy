@@ -24,13 +24,13 @@ const NotificationDropdown = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="text-white hover:bg-avalanche-gray-dark relative"
+          className="text-white hover:bg-avalanche-gray-dark relative transition-all duration-200"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (
             <Badge 
               variant="destructive" 
-              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-avalanche-red"
+              className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs bg-avalanche-red hover:bg-avalanche-red-dark"
             >
               {unreadCount > 9 ? '9+' : unreadCount}
             </Badge>
@@ -39,7 +39,7 @@ const NotificationDropdown = () => {
       </DropdownMenuTrigger>
       <DropdownMenuContent 
         align="end" 
-        className="w-80 bg-avalanche-gray-dark border-avalanche-gray-medium max-h-96"
+        className="w-80 bg-avalanche-gray-dark border-avalanche-gray-medium max-h-96 shadow-xl"
       >
         <div className="p-3 border-b border-avalanche-gray-medium">
           <h3 className="text-white font-semibold">Notifications</h3>
@@ -52,7 +52,7 @@ const NotificationDropdown = () => {
           {notifications.map((notification) => (
             <DropdownMenuItem
               key={notification.id}
-              className="text-white hover:bg-avalanche-gray-medium cursor-pointer p-4 flex flex-col items-start space-y-1"
+              className="text-white hover:bg-avalanche-gray-medium focus:bg-avalanche-gray-medium cursor-pointer p-4 flex flex-col items-start space-y-1 transition-colors duration-200"
               onClick={() => handleNotificationClick(notification.id)}
             >
               <div className="flex items-center justify-between w-full">
@@ -74,7 +74,7 @@ const NotificationDropdown = () => {
                 <div className="flex items-center space-x-2 mt-1">
                   <Badge 
                     variant="outline" 
-                    className="text-xs border-avalanche-red text-avalanche-red"
+                    className="text-xs border-avalanche-red text-avalanche-red bg-avalanche-red/10"
                   >
                     {notification.token_ticker}
                   </Badge>

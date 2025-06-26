@@ -30,11 +30,11 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="bg-black border-b border-avalanche-red">
+    <nav className="bg-black border-b border-avalanche-red sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="text-2xl font-bold text-white">
+          <Link to="/" className="text-2xl font-bold text-white hover:text-avalanche-red transition-colors">
             FrostMint
           </Link>
 
@@ -67,21 +67,21 @@ const Navigation = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="text-white hover:bg-avalanche-gray-dark bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red"
+                    className="text-white hover:bg-avalanche-gray-dark bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red hover:border-avalanche-red-dark transition-all duration-200"
                   >
                     <Wallet className="h-4 w-4" />
-                    <span className="hidden sm:inline">{formatAddress(address!)}</span>
+                    <span className="hidden sm:inline font-mono">{formatAddress(address!)}</span>
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent 
                   align="end" 
-                  className="bg-avalanche-gray-dark border-avalanche-gray-medium"
+                  className="bg-avalanche-gray-dark border-avalanche-gray-medium shadow-xl"
                 >
                   <DropdownMenuItem asChild>
                     <Link 
                       to="/dashboard"
-                      className="text-white hover:bg-avalanche-gray-medium cursor-pointer flex items-center"
+                      className="text-white hover:bg-avalanche-gray-medium cursor-pointer flex items-center focus:bg-avalanche-gray-medium"
                     >
                       <LayoutDashboard className="h-4 w-4 mr-2" />
                       Dashboard
@@ -89,7 +89,7 @@ const Navigation = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={disconnect}
-                    className="text-red-400 hover:bg-avalanche-gray-medium cursor-pointer"
+                    className="text-red-400 hover:bg-avalanche-gray-medium cursor-pointer focus:bg-avalanche-gray-medium"
                   >
                     <Wallet className="h-4 w-4 mr-2" />
                     Disconnect Wallet
@@ -100,7 +100,7 @@ const Navigation = () => {
               <Button
                 onClick={handleConnect}
                 disabled={isConnecting}
-                className="bg-avalanche-red hover:bg-avalanche-red-dark text-white flex items-center space-x-2"
+                className="bg-avalanche-red hover:bg-avalanche-red-dark text-white flex items-center space-x-2 transition-all duration-200"
               >
                 {isConnecting ? (
                   <>

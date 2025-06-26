@@ -9,7 +9,7 @@ import { Loader2, Upload, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useWallet } from "@/contexts/WalletContext";
-import { createMemeCoin, getTokenAddressFromReceipt } from "@/utils/contractUtils";
+import { deployToken, TokenData } from "@/utils/contractUtils";
 import TokenCreatedModal from "@/components/TokenCreatedModal";
 import { addNotification } from "@/utils/notificationUtils";
 
@@ -96,44 +96,21 @@ const Launch = () => {
       
       const tokenType = getTokenType(activeTab);
       
-      const tx = await createMemeCoin(
-        tokenData.name,
-        tokenData.ticker,
-        tokenData.supply,
-        address,
-        tokenData.description,
-        tokenType,
-        tokenData.image
-      );
+      const tokenDataForDeployment: TokenData = {
+        name: tokenData.name,
+        ticker: tokenData.ticker,
+        initialSupply: parseInt(tokenData.supply),
+        tokenType: tokenType,
+        description: tokenData.description,
+        imageUrl: tokenData.image ? URL.createObjectURL(tokenData.image) : undefined
+      };
       
-      toast.info("Transaction submitted. Waiting for confirmation...");
-      const receipt = await tx.wait();
+      const contractAddress = await deployToken(tokenDataForDeployment, address);
       
-      console.log("Transaction successful! Hash:", receipt.hash);
+      console.log("Token deployed successfully at:", contractAddress);
       
-      const tokenAddress = await getTokenAddressFromReceipt(
-        receipt,
-        tokenData.name,
-        tokenData.ticker,
-        address,
-        tokenData.supply,
-        tokenData.description,
-        tokenType,
-        tokenData.image
-      );
-      
-      // Add notification for token creation
-      await addNotification({
-        type: 'token_created',
-        title: 'Token Created Successfully!',
-        message: `Your ${tokenType} "${tokenData.name}" (${tokenData.ticker}) has been created successfully.`,
-        user_wallet: address,
-        token_name: tokenData.name,
-        token_ticker: tokenData.ticker
-      });
-      
-      // Always show success since transaction was successful
-      setCreatedTokenAddress(tokenAddress || receipt.hash);
+      // Set the created token address for the modal
+      setCreatedTokenAddress(contractAddress);
       setShowSuccessModal(true);
       toast.success("Token created successfully!");
       

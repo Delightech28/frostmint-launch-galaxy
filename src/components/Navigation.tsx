@@ -67,7 +67,7 @@ const Navigation = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="text-white hover:bg-avalanche-gray-dark hover:text-white flex items-center space-x-2 border border-avalanche-red bg-transparent"
+                    className="text-white hover:bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red bg-transparent"
                   >
                     <Wallet className="h-4 w-4" />
                     <span className="hidden sm:inline">{formatAddress(address!)}</span>
@@ -81,7 +81,7 @@ const Navigation = () => {
                   <DropdownMenuItem asChild>
                     <Link 
                       to="/dashboard"
-                      className="text-white hover:bg-avalanche-gray-medium hover:text-white cursor-pointer flex items-center w-full"
+                      className="text-white hover:bg-avalanche-gray-medium cursor-pointer flex items-center w-full"
                     >
                       <LayoutDashboard className="h-4 w-4 mr-2" />
                       Dashboard
@@ -89,7 +89,7 @@ const Navigation = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem 
                     onClick={disconnect}
-                    className="text-red-400 hover:bg-avalanche-gray-medium hover:text-red-400 cursor-pointer"
+                    className="text-red-400 hover:bg-avalanche-gray-medium cursor-pointer"
                   >
                     <Wallet className="h-4 w-4 mr-2" />
                     Disconnect Wallet

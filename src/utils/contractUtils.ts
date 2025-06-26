@@ -97,6 +97,8 @@ export const saveTokenToDatabase = async (
   creatorWallet: string,
   initialSupply: string,
   description?: string,
+  tokenType?: string,
+  imageUrl?: string,
   transactionHash?: string
 ) => {
   try {
@@ -108,7 +110,9 @@ export const saveTokenToDatabase = async (
         contract_address: contractAddress,
         creator_wallet: creatorWallet,
         initial_supply: parseInt(initialSupply),
-        description: description || null
+        description: description || null,
+        token_type: tokenType || 'Fun Coin',
+        image_url: imageUrl || null
       })
       .select()
       .single();
@@ -126,12 +130,39 @@ export const saveTokenToDatabase = async (
   }
 };
 
+export const uploadTokenImage = async (file: File, tokenName: string): Promise<string | null> => {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${tokenName.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.${fileExt}`;
+    
+    const { data, error } = await supabase.storage
+      .from('token-images')
+      .upload(fileName, file);
+
+    if (error) {
+      console.error('Error uploading image:', error);
+      return null;
+    }
+
+    const { data: publicData } = supabase.storage
+      .from('token-images')
+      .getPublicUrl(fileName);
+
+    return publicData.publicUrl;
+  } catch (error) {
+    console.error('Error in uploadTokenImage:', error);
+    return null;
+  }
+};
+
 export const createMemeCoin = async (
   name: string,
   ticker: string,
   initialSupply: string,
   creatorWallet: string,
-  description?: string
+  description?: string,
+  tokenType?: string,
+  image?: File | null
 ) => {
   if (!window.ethereum) {
     throw new Error('MetaMask is not installed');
@@ -171,10 +202,18 @@ export const getTokenAddressFromReceipt = async (
   ticker: string, 
   creatorWallet: string, 
   initialSupply: string, 
-  description?: string
+  description?: string,
+  tokenType?: string,
+  image?: File | null
 ): Promise<string | null> => {
   console.log('Receipt logs:', receipt.logs);
   console.log('Transaction hash:', receipt.hash);
+  
+  // Upload image if provided
+  let imageUrl: string | null = null;
+  if (image) {
+    imageUrl = await uploadTokenImage(image, name);
+  }
   
   // Create interface for parsing events
   const iface = new ethers.Interface(MEME_COIN_FACTORY_ABI);
@@ -243,6 +282,8 @@ export const getTokenAddressFromReceipt = async (
       creatorWallet,
       initialSupply,
       description,
+      tokenType || 'Fun Coin',
+      imageUrl,
       receipt.hash
     );
     console.log('Token saved to database successfully');

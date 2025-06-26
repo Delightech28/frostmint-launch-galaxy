@@ -1,27 +1,31 @@
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2 } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useWallet } from "@/contexts/WalletContext";
 import { createMemeCoin, getTokenAddressFromReceipt } from "@/utils/contractUtils";
 import TokenCreatedModal from "@/components/TokenCreatedModal";
+import { addNotification } from "@/utils/notificationUtils";
 
 const Launch = () => {
   const { isConnected, address } = useWallet();
   const [isCreating, setIsCreating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [createdTokenAddress, setCreatedTokenAddress] = useState("");
+  const [activeTab, setActiveTab] = useState("fun-coin");
   
   const [tokenData, setTokenData] = useState({
     name: "",
     ticker: "",
     supply: "",
     description: "",
+    image: null as File | null,
   });
 
   const [nftData, setNftData] = useState({
@@ -30,6 +34,35 @@ const Launch = () => {
     quantity: "",
     image: null as File | null,
   });
+
+  const handleImageUpload = (file: File | null, type: 'token' | 'nft') => {
+    if (type === 'token') {
+      setTokenData({...tokenData, image: file});
+    } else {
+      setNftData({...nftData, image: file});
+    }
+  };
+
+  const removeImage = (type: 'token' | 'nft') => {
+    if (type === 'token') {
+      setTokenData({...tokenData, image: null});
+    } else {
+      setNftData({...nftData, image: null});
+    }
+  };
+
+  const getTokenType = (tabValue: string) => {
+    switch (tabValue) {
+      case "fun-coin":
+        return "Fun Coin";
+      case "trading-coin":
+        return "Trading Coin";
+      case "nft":
+        return "NFT";
+      default:
+        return "Fun Coin";
+    }
+  };
 
   const handleTickerChange = (value: string) => {
     // Auto-format ticker: 3-6 characters, uppercase, letters only
@@ -59,14 +92,18 @@ const Launch = () => {
 
     try {
       setIsCreating(true);
-      toast.info("Creating your meme coin...");
+      toast.info("Creating your token...");
+      
+      const tokenType = getTokenType(activeTab);
       
       const tx = await createMemeCoin(
         tokenData.name,
         tokenData.ticker,
         tokenData.supply,
         address,
-        tokenData.description
+        tokenData.description,
+        tokenType,
+        tokenData.image
       );
       
       toast.info("Transaction submitted. Waiting for confirmation...");
@@ -80,8 +117,19 @@ const Launch = () => {
         tokenData.ticker,
         address,
         tokenData.supply,
-        tokenData.description
+        tokenData.description,
+        tokenType
       );
+      
+      // Add notification for token creation
+      await addNotification({
+        type: 'token_created',
+        title: 'Token Created Successfully!',
+        message: `Your ${tokenType} "${tokenData.name}" (${tokenData.ticker}) has been created successfully.`,
+        user_wallet: address,
+        token_name: tokenData.name,
+        token_ticker: tokenData.ticker
+      });
       
       // Always show success since transaction was successful
       setCreatedTokenAddress(tokenAddress || receipt.hash);
@@ -89,7 +137,7 @@ const Launch = () => {
       toast.success("Token created successfully!");
       
       // Reset form
-      setTokenData({ name: "", ticker: "", supply: "", description: "" });
+      setTokenData({ name: "", ticker: "", supply: "", description: "", image: null });
       
     } catch (error: any) {
       console.error("Error creating token:", error);
@@ -111,6 +159,52 @@ const Launch = () => {
     toast.success(`${type} launch initiated! (Demo mode)`);
   };
 
+  const ImageUploadSection = ({ 
+    file, 
+    onFileChange, 
+    onRemove, 
+    type 
+  }: { 
+    file: File | null; 
+    onFileChange: (file: File | null) => void; 
+    onRemove: () => void;
+    type: 'token' | 'nft';
+  }) => (
+    <div>
+      <Label className="text-gray-300">Upload Image</Label>
+      <div className="mt-2">
+        {file ? (
+          <div className="relative w-full h-32 bg-avalanche-gray-medium rounded-lg border-2 border-dashed border-avalanche-gray-medium overflow-hidden">
+            <img 
+              src={URL.createObjectURL(file)} 
+              alt="Preview" 
+              className="w-full h-full object-cover"
+            />
+            <button
+              onClick={onRemove}
+              className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+        ) : (
+          <div className="w-full h-32 bg-avalanche-gray-medium rounded-lg border-2 border-dashed border-avalanche-gray-medium flex items-center justify-center cursor-pointer hover:border-avalanche-red transition-colors">
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => onFileChange(e.target.files?.[0] || null)}
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+            <div className="text-center text-gray-400">
+              <Upload className="h-8 w-8 mx-auto mb-2" />
+              <p className="text-sm">Click to upload image</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-black">
       <div className="container mx-auto px-4 py-8">
@@ -124,7 +218,7 @@ const Launch = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Launch Form */}
           <div>
-            <Tabs defaultValue="fun-coin" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 bg-avalanche-gray-dark">
                 <TabsTrigger value="fun-coin" className="data-[state=active]:bg-avalanche-red">
                   Fun Coin
@@ -196,6 +290,13 @@ const Launch = () => {
                       />
                     </div>
                     
+                    <ImageUploadSection
+                      file={tokenData.image}
+                      onFileChange={(file) => handleImageUpload(file, 'token')}
+                      onRemove={() => removeImage('token')}
+                      type="token"
+                    />
+                    
                     <div className="bg-avalanche-gray-medium p-4 rounded-lg">
                       <p className="text-gray-300 text-sm mb-2">Minting Fee: <span className="text-avalanche-red font-semibold">0.01 AVAX</span></p>
                       <p className="text-gray-400 text-xs">This fee covers the gas costs for deploying your token contract on Avalanche.</p>
@@ -226,42 +327,66 @@ const Launch = () => {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <Label htmlFor="trading-name" className="text-gray-300">Token Name</Label>
+                      <Label htmlFor="trading-name" className="text-gray-300">Token Name *</Label>
                       <Input
                         id="trading-name"
                         placeholder="e.g., AvalancheGem"
+                        value={tokenData.name}
+                        onChange={(e) => setTokenData({...tokenData, name: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol</Label>
+                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol *</Label>
                       <Input
                         id="trading-ticker"
                         placeholder="e.g., AGEM"
+                        value={tokenData.ticker}
+                        onChange={(e) => handleTickerChange(e.target.value)}
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="trading-supply" className="text-gray-300">Total Supply</Label>
+                      <Label htmlFor="trading-supply" className="text-gray-300">Total Supply *</Label>
                       <Input
                         id="trading-supply"
                         placeholder="e.g., 10000000"
+                        value={tokenData.supply}
+                        onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="initial-liquidity" className="text-gray-300">Initial Liquidity (AVAX)</Label>
-                      <Input
-                        id="initial-liquidity"
-                        placeholder="e.g., 5"
+                      <Label htmlFor="trading-description" className="text-gray-300">Description</Label>
+                      <Textarea
+                        id="trading-description"
+                        placeholder="Describe your trading coin..."
+                        value={tokenData.description}
+                        onChange={(e) => setTokenData({...tokenData, description: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
+                    
+                    <ImageUploadSection
+                      file={tokenData.image}
+                      onFileChange={(file) => handleImageUpload(file, 'token')}
+                      onRemove={() => removeImage('token')}
+                      type="token"
+                    />
+                    
                     <Button 
-                      onClick={() => handleLaunchToken("Trading Coin")}
+                      onClick={handleCreateToken}
+                      disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
                     >
-                      Launch Trading Coin
+                      {isCreating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating Token...
+                        </>
+                      ) : (
+                        "Create Trading Coin"
+                      )}
                     </Button>
                   </CardContent>
                 </Card>
@@ -303,15 +428,14 @@ const Launch = () => {
                         className="bg-black border-avalanche-gray-medium text-white"
                       />
                     </div>
-                    <div>
-                      <Label htmlFor="nft-image" className="text-gray-300">Upload Image</Label>
-                      <Input
-                        id="nft-image"
-                        type="file"
-                        accept="image/*"
-                        className="bg-black border-avalanche-gray-medium text-white"
-                      />
-                    </div>
+                    
+                    <ImageUploadSection
+                      file={nftData.image}
+                      onFileChange={(file) => handleImageUpload(file, 'nft')}
+                      onRemove={() => removeImage('nft')}
+                      type="nft"
+                    />
+                    
                     <Button 
                       onClick={() => handleLaunchToken("NFT Collection")}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
@@ -333,22 +457,40 @@ const Launch = () => {
               <CardContent>
                 <div className="bg-black p-6 rounded-lg border border-avalanche-gray-medium">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-avalanche-red rounded-full mx-auto mb-4 flex items-center justify-center">
-                      <span className="text-white font-bold text-xl">
-                        {tokenData.ticker ? tokenData.ticker.charAt(0) : "?"}
-                      </span>
+                    <div className="w-16 h-16 bg-avalanche-red rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                      {tokenData.image || nftData.image ? (
+                        <img 
+                          src={URL.createObjectURL(activeTab === 'nft' ? nftData.image! : tokenData.image!)} 
+                          alt="Token preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span className="text-white font-bold text-xl">
+                          {(activeTab === 'nft' ? nftData.name : tokenData.name) 
+                            ? (activeTab === 'nft' ? nftData.name.charAt(0) : tokenData.name.charAt(0)) 
+                            : "?"}
+                        </span>
+                      )}
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">
-                      {tokenData.name || "Your Token Name"}
+                      {activeTab === 'nft' 
+                        ? (nftData.name || "Your NFT Collection") 
+                        : (tokenData.name || "Your Token Name")}
                     </h3>
                     <p className="text-gray-400 text-sm mb-4">
-                      ${tokenData.ticker || "TICKER"}
+                      {activeTab === 'nft' 
+                        ? `${nftData.quantity || "1000"} NFTs`
+                        : `$${tokenData.ticker || "TICKER"}`}
                     </p>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <div className="text-gray-400">Supply</div>
+                        <div className="text-gray-400">
+                          {activeTab === 'nft' ? 'Quantity' : 'Supply'}
+                        </div>
                         <div className="text-white font-semibold">
-                          {tokenData.supply ? Number(tokenData.supply).toLocaleString() : "1,000,000"}
+                          {activeTab === 'nft' 
+                            ? (nftData.quantity ? Number(nftData.quantity).toLocaleString() : "1,000")
+                            : (tokenData.supply ? Number(tokenData.supply).toLocaleString() : "1,000,000")}
                         </div>
                       </div>
                       <div>
@@ -356,9 +498,11 @@ const Launch = () => {
                         <div className="text-avalanche-red font-semibold">Avalanche</div>
                       </div>
                     </div>
-                    {tokenData.description && (
+                    {((activeTab === 'nft' && nftData.description) || (activeTab !== 'nft' && tokenData.description)) && (
                       <div className="mt-4 p-3 bg-avalanche-gray-medium rounded text-left">
-                        <p className="text-gray-300 text-sm">{tokenData.description}</p>
+                        <p className="text-gray-300 text-sm">
+                          {activeTab === 'nft' ? nftData.description : tokenData.description}
+                        </p>
                       </div>
                     )}
                   </div>

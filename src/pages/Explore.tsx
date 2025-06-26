@@ -4,54 +4,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, TrendingUp, Filter } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Token {
+  id: string;
+  name: string;
+  ticker: string;
+  token_type: string;
+  initial_supply: number;
+  description?: string;
+  image_url?: string;
+  creator_wallet: string;
+  created_at: string;
+}
 
 const Explore = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
-
-  const mockProjects = [
-    {
-      id: 1,
-      name: "DogeMoon",
-      ticker: "DMOON",
-      type: "Fun Coin",
-      price: "$0.0012",
-      change: "+24.5%",
-      volume: "$45.2K",
-      image: "🐕"
-    },
-    {
-      id: 2,
-      name: "AvalancheGem",
-      ticker: "AGEM",
-      type: "Trading Coin",
-      price: "$0.0845",
-      change: "-5.2%",
-      volume: "$122.8K",
-      image: "💎"
-    },
-    {
-      id: 3,
-      name: "Frost Creatures",
-      ticker: "NFT",
-      type: "NFT",
-      price: "0.1 AVAX",
-      change: "+12.1%",
-      volume: "89 sold",
-      image: "❄️"
-    },
-    {
-      id: 4,
-      name: "MemeKing",
-      ticker: "MKING",
-      type: "Fun Coin",
-      price: "$0.0003",
-      change: "+156.7%",
-      volume: "$78.9K",
-      image: "👑"
-    }
-  ];
+  const [tokens, setTokens] = useState<Token[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const filters = [
     { id: "all", label: "All" },
@@ -61,18 +33,110 @@ const Explore = () => {
     { id: "trending", label: "Trending" }
   ];
 
-  const filteredProjects = mockProjects.filter(project => {
-    const matchesSearch = project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         project.ticker.toLowerCase().includes(searchTerm.toLowerCase());
+  // Fetch tokens from database
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tokens')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching tokens:', error);
+          return;
+        }
+
+        setTokens(data || []);
+      } catch (error) {
+        console.error('Error fetching tokens:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTokens();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('tokens')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'tokens',
+        },
+        (payload) => {
+          const newToken = payload.new as Token;
+          setTokens(prev => [newToken, ...prev]);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const getTokenType = (tokenType: string) => {
+    if (tokenType?.toLowerCase().includes('fun') || tokenType?.toLowerCase().includes('meme')) {
+      return 'Fun Coin';
+    }
+    if (tokenType?.toLowerCase().includes('trading')) {
+      return 'Trading Coin';
+    }
+    if (tokenType?.toLowerCase().includes('nft')) {
+      return 'NFT';
+    }
+    return 'Fun Coin'; // Default
+  };
+
+  const filteredTokens = tokens.filter(token => {
+    const matchesSearch = token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         token.ticker.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (activeFilter === "all") return matchesSearch;
-    if (activeFilter === "fun") return matchesSearch && project.type === "Fun Coin";
-    if (activeFilter === "trading") return matchesSearch && project.type === "Trading Coin";
-    if (activeFilter === "nft") return matchesSearch && project.type === "NFT";
-    if (activeFilter === "trending") return matchesSearch && parseFloat(project.change) > 10;
+    
+    const tokenType = getTokenType(token.token_type);
+    
+    if (activeFilter === "fun") return matchesSearch && tokenType === "Fun Coin";
+    if (activeFilter === "trading") return matchesSearch && tokenType === "Trading Coin";
+    if (activeFilter === "nft") return matchesSearch && tokenType === "NFT";
+    if (activeFilter === "trending") {
+      // For demo purposes, consider tokens created in the last 24 hours as trending
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+      return matchesSearch && new Date(token.created_at) > yesterday;
+    }
     
     return matchesSearch;
   });
+
+  const generateMockPrice = (ticker: string) => {
+    // Generate consistent mock data based on ticker
+    const hash = ticker.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const price = ((hash % 1000) + 1) / 100000; // 0.00001 to 0.01
+    return `$${price.toFixed(6)}`;
+  };
+
+  const generateMockChange = (ticker: string) => {
+    const hash = ticker.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+    const change = ((hash % 200) - 100) / 10; // -10% to +10%
+    return `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+  };
+
+  const generateMockVolume = (supply: number) => {
+    const volume = Math.floor(supply * 0.001); // Mock volume as 0.1% of supply
+    return `$${(volume / 1000).toFixed(1)}K`;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Loading tokens...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black">
@@ -116,64 +180,90 @@ const Explore = () => {
           </div>
         </div>
 
-        {/* Projects Grid */}
+        {/* Tokens Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <Card key={project.id} className="bg-avalanche-gray-dark border-avalanche-gray-medium hover:border-avalanche-red transition-colors cursor-pointer">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="text-2xl">{project.image}</div>
+          {filteredTokens.map((token) => {
+            const tokenType = getTokenType(token.token_type);
+            const mockPrice = generateMockPrice(token.ticker);
+            const mockChange = generateMockChange(token.ticker);
+            const mockVolume = generateMockVolume(token.initial_supply);
+
+            return (
+              <Card key={token.id} className="bg-avalanche-gray-dark border-avalanche-gray-medium hover:border-avalanche-red transition-colors cursor-pointer">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-3">
+                      <div className="w-8 h-8 rounded-full overflow-hidden bg-avalanche-red flex items-center justify-center">
+                        {token.image_url ? (
+                          <img 
+                            src={token.image_url} 
+                            alt={token.name} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-white font-bold text-sm">
+                            {token.name.charAt(0)}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <CardTitle className="text-white text-lg">{token.name}</CardTitle>
+                        <p className="text-gray-400 text-sm">{token.ticker}</p>
+                      </div>
+                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        tokenType === "Fun Coin" 
+                          ? "border-blue-500 text-blue-400" 
+                          : tokenType === "Trading Coin"
+                          ? "border-green-500 text-green-400"
+                          : "border-purple-500 text-purple-400"
+                      }
+                    >
+                      {tokenType}
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <CardTitle className="text-white text-lg">{project.name}</CardTitle>
-                      <p className="text-gray-400 text-sm">{project.ticker}</p>
+                      <div className="text-gray-400">Price</div>
+                      <div className="text-white font-semibold">{mockPrice}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-400">24h Change</div>
+                      <div className={`font-semibold ${
+                        mockChange.startsWith('+') ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {mockChange}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="text-gray-400">Volume</div>
+                      <div className="text-white font-semibold">{mockVolume}</div>
                     </div>
                   </div>
-                  <Badge 
-                    variant="outline" 
-                    className={
-                      project.type === "Fun Coin" 
-                        ? "border-blue-500 text-blue-400" 
-                        : project.type === "Trading Coin"
-                        ? "border-green-500 text-green-400"
-                        : "border-purple-500 text-purple-400"
-                    }
+                  {token.description && (
+                    <div className="mt-3 p-2 bg-avalanche-gray-medium rounded text-xs text-gray-300">
+                      {token.description.length > 80 
+                        ? `${token.description.substring(0, 80)}...` 
+                        : token.description}
+                    </div>
+                  )}
+                  <Button 
+                    className="w-full mt-4 bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+                    size="sm"
                   >
-                    {project.type}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="text-gray-400">Price</div>
-                    <div className="text-white font-semibold">{project.price}</div>
-                  </div>
-                  <div>
-                    <div className="text-gray-400">24h Change</div>
-                    <div className={`font-semibold ${
-                      project.change.startsWith('+') ? 'text-green-400' : 'text-red-400'
-                    }`}>
-                      {project.change}
-                    </div>
-                  </div>
-                  <div className="col-span-2">
-                    <div className="text-gray-400">Volume</div>
-                    <div className="text-white font-semibold">{project.volume}</div>
-                  </div>
-                </div>
-                <Button 
-                  className="w-full mt-4 bg-avalanche-red hover:bg-avalanche-red-dark text-white"
-                  size="sm"
-                >
-                  View Details
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                    View Details
+                  </Button>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
-        {filteredProjects.length === 0 && (
+        {filteredTokens.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 mb-4">
               <Filter className="h-12 w-12 mx-auto mb-4 opacity-50" />

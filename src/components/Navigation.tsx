@@ -7,8 +7,9 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useWallet } from "@/contexts/WalletContext";
-import { Rocket, Compass, Coins, Bell, Wallet, ChevronDown, Loader2, LayoutDashboard } from "lucide-react";
+import { Rocket, Compass, Coins, Wallet, ChevronDown, Loader2, LayoutDashboard } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import NotificationDropdown from "@/components/NotificationDropdown";
 
 const Navigation = () => {
   const { isConnected, address, disconnect, connect, isConnecting } = useWallet();
@@ -58,11 +59,7 @@ const Navigation = () => {
           {/* Right side */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
-            {isConnected && (
-              <Button variant="ghost" size="icon" className="text-white hover:bg-avalanche-gray-dark">
-                <Bell className="h-4 w-4" />
-              </Button>
-            )}
+            {isConnected && <NotificationDropdown />}
             
             {/* Wallet Connection */}
             {isConnected ? (
@@ -70,14 +67,17 @@ const Navigation = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="text-white hover:bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red"
+                    className="text-white hover:bg-avalanche-gray-dark bg-transparent flex items-center space-x-2 border border-avalanche-red"
                   >
                     <Wallet className="h-4 w-4" />
                     <span className="hidden sm:inline">{formatAddress(address!)}</span>
                     <ChevronDown className="h-3 w-3" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-avalanche-gray-dark border-avalanche-gray-medium">
+                <DropdownMenuContent 
+                  align="end" 
+                  className="bg-avalanche-gray-dark border-avalanche-gray-medium"
+                >
                   <DropdownMenuItem asChild>
                     <Link 
                       to="/dashboard"

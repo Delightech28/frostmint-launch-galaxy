@@ -11,12 +11,13 @@ interface Token {
   id: string;
   name: string;
   ticker: string;
-  token_type: string;
+  token_type: string | null;
   initial_supply: number;
   description?: string;
   image_url?: string;
   creator_wallet: string;
   created_at: string;
+  contract_address: string;
 }
 
 const Explore = () => {
@@ -27,7 +28,7 @@ const Explore = () => {
 
   const filters = [
     { id: "all", label: "All" },
-    { id: "fun", label: "Fun Coins" },
+    { id: "fun", label: "Fun/Meme Coins" },
     { id: "trading", label: "Trading Coins" },
     { id: "nft", label: "NFTs" },
     { id: "trending", label: "Trending" }
@@ -79,17 +80,20 @@ const Explore = () => {
     };
   }, []);
 
-  const getTokenType = (tokenType: string) => {
-    if (tokenType?.toLowerCase().includes('fun') || tokenType?.toLowerCase().includes('meme')) {
-      return 'Fun Coin';
+  const getTokenType = (tokenType: string | null) => {
+    if (!tokenType) return 'Fun/Meme Coin';
+    
+    const type = tokenType.toLowerCase();
+    if (type.includes('fun') || type.includes('meme')) {
+      return 'Fun/Meme Coin';
     }
-    if (tokenType?.toLowerCase().includes('trading')) {
+    if (type.includes('trading')) {
       return 'Trading Coin';
     }
-    if (tokenType?.toLowerCase().includes('nft')) {
+    if (type.includes('nft')) {
       return 'NFT';
     }
-    return 'Fun Coin'; // Default
+    return 'Fun/Meme Coin'; // Default
   };
 
   const filteredTokens = tokens.filter(token => {
@@ -100,7 +104,7 @@ const Explore = () => {
     
     const tokenType = getTokenType(token.token_type);
     
-    if (activeFilter === "fun") return matchesSearch && tokenType === "Fun Coin";
+    if (activeFilter === "fun") return matchesSearch && tokenType === "Fun/Meme Coin";
     if (activeFilter === "trading") return matchesSearch && tokenType === "Trading Coin";
     if (activeFilter === "nft") return matchesSearch && tokenType === "NFT";
     if (activeFilter === "trending") {
@@ -112,15 +116,15 @@ const Explore = () => {
     return matchesSearch;
   });
 
-  const generateMockPrice = (ticker: string) => {
-    // Generate consistent mock data based on ticker
-    const hash = ticker.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+  // Generate stable mock data based on token ID
+  const generateMockPrice = (tokenId: string) => {
+    const hash = tokenId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
     const price = ((hash % 1000) + 1) / 100000; // 0.00001 to 0.01
     return `$${price.toFixed(6)}`;
   };
 
-  const generateMockChange = (ticker: string) => {
-    const hash = ticker.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+  const generateMockChange = (tokenId: string) => {
+    const hash = tokenId.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
     const change = ((hash % 200) - 100) / 10; // -10% to +10%
     return `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
   };
@@ -184,8 +188,8 @@ const Explore = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredTokens.map((token) => {
             const tokenType = getTokenType(token.token_type);
-            const mockPrice = generateMockPrice(token.ticker);
-            const mockChange = generateMockChange(token.ticker);
+            const mockPrice = generateMockPrice(token.id);
+            const mockChange = generateMockChange(token.id);
             const mockVolume = generateMockVolume(token.initial_supply);
 
             return (
@@ -193,7 +197,7 @@ const Explore = () => {
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 rounded-full overflow-hidden bg-avalanche-red flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-avalanche-red flex items-center justify-center">
                         {token.image_url ? (
                           <img 
                             src={token.image_url} 
@@ -201,7 +205,7 @@ const Explore = () => {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <span className="text-white font-bold text-sm">
+                          <span className="text-white font-bold text-lg">
                             {token.name.charAt(0)}
                           </span>
                         )}
@@ -214,7 +218,7 @@ const Explore = () => {
                     <Badge 
                       variant="outline" 
                       className={
-                        tokenType === "Fun Coin" 
+                        tokenType === "Fun/Meme Coin" 
                           ? "border-blue-500 text-blue-400" 
                           : tokenType === "Trading Coin"
                           ? "border-green-500 text-green-400"
@@ -272,6 +276,32 @@ const Explore = () => {
           </div>
         )}
       </div>
+      
+      <style jsx global>{`
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #e53e3e;
+          border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #c53030;
+        }
+      `}</style>
     </div>
   );
 };

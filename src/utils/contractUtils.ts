@@ -111,7 +111,7 @@ export const saveTokenToDatabase = async (
         creator_wallet: creatorWallet,
         initial_supply: parseInt(initialSupply),
         description: description || null,
-        token_type: tokenType || 'Fun Coin',
+        token_type: tokenType || 'Fun/Meme Coin',
         image_url: imageUrl || null
       })
       .select()
@@ -282,7 +282,7 @@ export const getTokenAddressFromReceipt = async (
       creatorWallet,
       initialSupply,
       description,
-      tokenType || 'Fun Coin',
+      tokenType || 'Fun/Meme Coin',
       imageUrl,
       receipt.hash
     );

@@ -54,13 +54,13 @@ const Launch = () => {
   const getTokenType = (tabValue: string) => {
     switch (tabValue) {
       case "fun-coin":
-        return "Fun Coin";
+        return "Fun/Meme Coin";
       case "trading-coin":
         return "Trading Coin";
       case "nft":
-        return "NFT";
+        return "NFT Collection";
       default:
-        return "Fun Coin";
+        return "Fun/Meme Coin";
     }
   };
 
@@ -118,7 +118,8 @@ const Launch = () => {
         address,
         tokenData.supply,
         tokenData.description,
-        tokenType
+        tokenType,
+        tokenData.image
       );
       
       // Add notification for token creation
@@ -221,7 +222,7 @@ const Launch = () => {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-3 bg-avalanche-gray-dark">
                 <TabsTrigger value="fun-coin" className="data-[state=active]:bg-avalanche-red">
-                  Fun Coin
+                  Fun/Meme Coin
                 </TabsTrigger>
                 <TabsTrigger value="trading-coin" className="data-[state=active]:bg-avalanche-red">
                   Trading Coin
@@ -234,7 +235,7 @@ const Launch = () => {
               <TabsContent value="fun-coin" className="space-y-4 mt-6">
                 <Card className="bg-avalanche-gray-dark border-avalanche-gray-medium">
                   <CardHeader>
-                    <CardTitle className="text-white">Fun Coin Details</CardTitle>
+                    <CardTitle className="text-white">Fun/Meme Coin Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
@@ -458,7 +459,7 @@ const Launch = () => {
                 <div className="bg-black p-6 rounded-lg border border-avalanche-gray-medium">
                   <div className="text-center">
                     <div className="w-16 h-16 bg-avalanche-red rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                      {tokenData.image || nftData.image ? (
+                      {(activeTab === 'nft' ? nftData.image : tokenData.image) ? (
                         <img 
                           src={URL.createObjectURL(activeTab === 'nft' ? nftData.image! : tokenData.image!)} 
                           alt="Token preview" 

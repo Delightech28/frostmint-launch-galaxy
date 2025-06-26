@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          read: boolean
+          title: string
+          token_name: string | null
+          token_ticker: string | null
+          type: string
+          user_wallet: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          read?: boolean
+          title: string
+          token_name?: string | null
+          token_ticker?: string | null
+          type: string
+          user_wallet: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          read?: boolean
+          title?: string
+          token_name?: string | null
+          token_ticker?: string | null
+          type?: string
+          user_wallet?: string
+        }
+        Relationships: []
+      }
       tokens: {
         Row: {
           contract_address: string
@@ -16,9 +52,11 @@ export type Database = {
           creator_wallet: string
           description: string | null
           id: string
+          image_url: string | null
           initial_supply: number
           name: string
           ticker: string
+          token_type: string | null
         }
         Insert: {
           contract_address: string
@@ -26,9 +64,11 @@ export type Database = {
           creator_wallet: string
           description?: string | null
           id?: string
+          image_url?: string | null
           initial_supply: number
           name: string
           ticker: string
+          token_type?: string | null
         }
         Update: {
           contract_address?: string
@@ -36,9 +76,11 @@ export type Database = {
           creator_wallet?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           initial_supply?: number
           name?: string
           ticker?: string
+          token_type?: string | null
         }
         Relationships: []
       }

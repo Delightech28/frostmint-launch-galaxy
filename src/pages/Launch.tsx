@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import { useWallet } from "@/contexts/WalletContext";
 import { deployToken, TokenData } from "@/utils/contractUtils";
 import TokenCreatedModal from "@/components/TokenCreatedModal";
-import { addNotification } from "@/utils/notificationUtils";
 
 const Launch = () => {
   const { isConnected, address } = useWallet();
@@ -74,7 +73,10 @@ const Launch = () => {
     return ticker.length >= 3 && ticker.length <= 6;
   };
 
-  const handleCreateToken = async () => {
+  const handleCreateToken = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
       return;
@@ -90,16 +92,22 @@ const Launch = () => {
       return;
     }
 
+    const supplyNumber = parseInt(tokenData.supply);
+    if (isNaN(supplyNumber) || supplyNumber <= 0) {
+      toast.error("Please enter a valid supply number");
+      return;
+    }
+
     try {
       setIsCreating(true);
-      toast.info("Creating your token...");
+      toast.info("Preparing to deploy your token...");
       
       const tokenType = getTokenType(activeTab);
       
       const tokenDataForDeployment: TokenData = {
         name: tokenData.name,
         ticker: tokenData.ticker,
-        initialSupply: parseInt(tokenData.supply),
+        initialSupply: supplyNumber,
         tokenType: tokenType,
         description: tokenData.description,
         imageUrl: tokenData.image ? URL.createObjectURL(tokenData.image) : undefined
@@ -119,14 +127,18 @@ const Launch = () => {
       
     } catch (error: any) {
       console.error("Error creating token:", error);
-      if (error.code === 4001) {
-        toast.error("Transaction rejected by user");
-      } else if (error.code === -32603) {
-        toast.error("Insufficient funds for minting fee (0.01 AVAX required)");
-      } else if (error.message && error.message.includes('already exists')) {
-        toast.error(error.message);
+      
+      // More specific error handling
+      if (error.message.includes('rejected')) {
+        toast.error("Transaction was rejected by user");
+      } else if (error.message.includes('insufficient funds')) {
+        toast.error("Insufficient AVAX for gas fees. Please add more AVAX to your wallet.");
+      } else if (error.message.includes('JSON-RPC')) {
+        toast.error("Network error. Please check your connection and try again.");
+      } else if (error.message.includes('gas')) {
+        toast.error("Gas estimation failed. Please ensure you have enough AVAX.");
       } else {
-        toast.error("Failed to create token. Please try again.");
+        toast.error(error.message || "Failed to create token. Please try again.");
       }
     } finally {
       setIsCreating(false);
@@ -159,21 +171,31 @@ const Launch = () => {
               className="w-full h-full object-cover"
             />
             <button
-              onClick={onRemove}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onRemove();
+              }}
               className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white rounded-full p-1"
             >
               <X className="h-3 w-3" />
             </button>
           </div>
         ) : (
-          <div className="w-full h-32 bg-avalanche-gray-medium rounded-lg border-2 border-dashed border-avalanche-gray-medium flex items-center justify-center cursor-pointer hover:border-avalanche-red transition-colors">
+          <div className="relative w-full h-32 bg-avalanche-gray-medium rounded-lg border-2 border-dashed border-avalanche-gray-medium flex items-center justify-center cursor-pointer hover:border-avalanche-red transition-colors">
             <input
               type="file"
               accept="image/*"
-              onChange={(e) => onFileChange(e.target.files?.[0] || null)}
+              onChange={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onFileChange(e.target.files?.[0] || null);
+              }}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              onClick={(e) => e.stopPropagation()}
             />
-            <div className="text-center text-gray-400">
+            <div className="text-center text-gray-400 pointer-events-none">
               <Upload className="h-8 w-8 mx-auto mb-2" />
               <p className="text-sm">Click to upload image</p>
             </div>
@@ -255,6 +277,7 @@ const Launch = () => {
                         onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
                         type="number"
+                        min="1"
                       />
                     </div>
                     <div>
@@ -276,11 +299,12 @@ const Launch = () => {
                     />
                     
                     <div className="bg-avalanche-gray-medium p-4 rounded-lg">
-                      <p className="text-gray-300 text-sm mb-2">Minting Fee: <span className="text-avalanche-red font-semibold">0.01 AVAX</span></p>
-                      <p className="text-gray-400 text-xs">This fee covers the gas costs for deploying your token contract on Avalanche.</p>
+                      <p className="text-gray-300 text-sm mb-2">Network: <span className="text-avalanche-red font-semibold">Avalanche Fuji Testnet</span></p>
+                      <p className="text-gray-400 text-xs">Make sure you have AVAX in your wallet for gas fees. You can get testnet AVAX from the Avalanche faucet.</p>
                     </div>
                     
                     <Button 
+                      type="button"
                       onClick={handleCreateToken}
                       disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply || !isValidTicker(tokenData.ticker)}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
@@ -332,6 +356,8 @@ const Launch = () => {
                         value={tokenData.supply}
                         onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
+                        type="number"
+                        min="1"
                       />
                     </div>
                     <div>
@@ -353,6 +379,7 @@ const Launch = () => {
                     />
                     
                     <Button 
+                      type="button"
                       onClick={handleCreateToken}
                       disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
@@ -415,6 +442,7 @@ const Launch = () => {
                     />
                     
                     <Button 
+                      type="button"
                       onClick={() => handleLaunchToken("NFT Collection")}
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
                     >

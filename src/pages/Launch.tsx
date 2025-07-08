@@ -6,11 +6,27 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { Loader2, Upload, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { useWallet } from "@/contexts/WalletContext";
 import { deployToken, TokenData } from "@/utils/contractUtils";
 import TokenCreatedModal from "@/components/TokenCreatedModal";
+import { supabase } from '@/integrations/supabase/client';
+
+// Utility function to upload image to Supabase Storage
+async function uploadTokenImage(file: File, tokenName: string): Promise<string> {
+  const fileExt = file.name.split('.').pop();
+  const filePath = `token-images/${tokenName.replace(/\s+/g, '_')}_${Date.now()}.${fileExt}`;
+  const { data, error } = await supabase.storage.from('token-images').upload(filePath, file, {
+    cacheControl: '3600',
+    upsert: false,
+  });
+  if (error) throw new Error('Image upload failed: ' + error.message);
+  // Get public URL
+  const { data: publicUrlData } = supabase.storage.from('token-images').getPublicUrl(filePath);
+  if (!publicUrlData?.publicUrl) throw new Error('Failed to get public image URL');
+  return publicUrlData.publicUrl;
+}
 
 const Launch = () => {
   const { isConnected, address } = useWallet();
@@ -37,6 +53,11 @@ const Launch = () => {
   // Add state for created token name and ticker
   const [createdTokenName, setCreatedTokenName] = useState("");
   const [createdTokenTicker, setCreatedTokenTicker] = useState("");
+
+  const [nameAvailable, setNameAvailable] = useState<null | boolean>(null);
+  const [tickerAvailable, setTickerAvailable] = useState<null | boolean>(null);
+  const [checkingName, setCheckingName] = useState(false);
+  const [checkingTicker, setCheckingTicker] = useState(false);
 
   const handleImageUpload = (file: File | null, type: 'token' | 'nft') => {
     if (type === 'token') {
@@ -77,6 +98,42 @@ const Launch = () => {
     return ticker.length >= 3 && ticker.length <= 6;
   };
 
+  // Real-time check for token name
+  useEffect(() => {
+    if (!tokenData.name) {
+      setNameAvailable(null);
+      return;
+    }
+    setCheckingName(true);
+    const timeout = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('id')
+        .eq('name', tokenData.name);
+      setNameAvailable(!(data && data.length > 0));
+      setCheckingName(false);
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [tokenData.name]);
+
+  // Real-time check for ticker symbol
+  useEffect(() => {
+    if (!tokenData.ticker) {
+      setTickerAvailable(null);
+      return;
+    }
+    setCheckingTicker(true);
+    const timeout = setTimeout(async () => {
+      const { data, error } = await supabase
+        .from('tokens')
+        .select('id')
+        .eq('ticker', tokenData.ticker);
+      setTickerAvailable(!(data && data.length > 0));
+      setCheckingTicker(false);
+    }, 500);
+    return () => clearTimeout(timeout);
+  }, [tokenData.ticker]);
+
   const handleCreateToken = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -102,9 +159,29 @@ const Launch = () => {
       return;
     }
 
+    if (!tokenData.image) {
+      toast.error("Token image is required");
+      return;
+    }
+
     try {
       setIsCreating(true);
+      toast.info("Uploading image...");
+      // Upload image to Supabase Storage
+      const imageUrl = await uploadTokenImage(tokenData.image, tokenData.name);
       toast.info("Preparing to deploy your token...");
+
+      // Check for duplicate name or ticker
+      const { data: existingTokens, error } = await supabase
+        .from('tokens')
+        .select('id')
+        .or(`name.eq.${tokenData.name},ticker.eq.${tokenData.ticker}`);
+
+      if (existingTokens && existingTokens.length > 0) {
+        toast.error("A token with this name or ticker already exists.");
+        setIsCreating(false);
+        return;
+      }
       
       const tokenType = getTokenType(activeTab);
       
@@ -114,7 +191,7 @@ const Launch = () => {
         initialSupply: supplyNumber,
         tokenType: tokenType,
         description: tokenData.description,
-        imageUrl: tokenData.image ? URL.createObjectURL(tokenData.image) : undefined
+        imageUrl: imageUrl // Use the uploaded image's public URL
       };
       
       const contractAddress = await deployToken(tokenDataForDeployment, address);
@@ -253,6 +330,17 @@ const Launch = () => {
                         className="bg-black border-avalanche-gray-medium text-white"
                         maxLength={20}
                       />
+                      {tokenData.name && (
+                        <div className="mt-1 text-xs">
+                          {checkingName ? (
+                            <span className="text-gray-400">Checking availability...</span>
+                          ) : nameAvailable === false ? (
+                            <span className="text-red-400">Token name already exists</span>
+                          ) : nameAvailable === true ? (
+                            <span className="text-green-400">Token name is available</span>
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="fun-ticker" className="text-gray-300">
@@ -270,6 +358,17 @@ const Launch = () => {
                         }`}
                         maxLength={6}
                       />
+                      {tokenData.ticker && (
+                        <div className="mt-1 text-xs">
+                          {checkingTicker ? (
+                            <span className="text-gray-400">Checking availability...</span>
+                          ) : tickerAvailable === false ? (
+                            <span className="text-red-400">Ticker symbol already exists</span>
+                          ) : tickerAvailable === true ? (
+                            <span className="text-green-400">Ticker symbol is available</span>
+                          ) : null}
+                        </div>
+                      )}
                       {tokenData.ticker && !isValidTicker(tokenData.ticker) && (
                         <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
                       )}
@@ -316,7 +415,17 @@ const Launch = () => {
                     <Button 
                       type="button"
                       onClick={handleCreateToken}
-                      disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply || !isValidTicker(tokenData.ticker)}
+                      disabled={
+                        !isConnected ||
+                        isCreating ||
+                        !tokenData.name ||
+                        !tokenData.ticker ||
+                        !tokenData.supply ||
+                        !isValidTicker(tokenData.ticker) ||
+                        !tokenData.image ||
+                        nameAvailable === false ||
+                        tickerAvailable === false
+                      }
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
                     >
                       {isCreating ? (
@@ -359,15 +468,19 @@ const Launch = () => {
                       />
                     </div>
                     <div>
-                      <Label htmlFor="trading-supply" className="text-gray-300">Total Supply *</Label>
+                      <Label htmlFor="trading-supply" className="text-gray-300">Initial Supply *</Label>
                       <Input
                         id="trading-supply"
                         placeholder="e.g., 10000000"
                         value={tokenData.supply}
-                        onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          setTokenData({...tokenData, supply: value});
+                        }}
                         className="bg-black border-avalanche-gray-medium text-white"
-                        type="number"
-                        min="1"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                       />
                     </div>
                     <div>
@@ -391,7 +504,15 @@ const Launch = () => {
                     <Button 
                       type="button"
                       onClick={handleCreateToken}
-                      disabled={!isConnected || isCreating || !tokenData.name || !tokenData.ticker || !tokenData.supply}
+                      disabled={
+                        !isConnected ||
+                        isCreating ||
+                        !tokenData.name ||
+                        !tokenData.ticker ||
+                        !tokenData.supply ||
+                        nameAvailable === false ||
+                        tickerAvailable === false
+                      }
                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
                     >
                       {isCreating ? (

@@ -125,7 +125,16 @@ const Dashboard = () => {
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h4 className="text-white font-semibold">{token.name}</h4>
+                          <div className="flex items-center space-x-2">
+                            {token.image_url && (
+                              <img
+                                src={token.image_url}
+                                alt={token.name}
+                                className="w-8 h-8 rounded-full object-cover border border-avalanche-gray-medium"
+                              />
+                            )}
+                            <h4 className="text-white font-semibold">{token.name}</h4>
+                          </div>
                           <p className="text-avalanche-red text-sm">${token.ticker}</p>
                         </div>
                         <Button
@@ -170,33 +179,6 @@ const Dashboard = () => {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
-
-        {/* Quick Actions */}
-        <Card className="bg-avalanche-gray-dark border-avalanche-red">
-          <CardHeader>
-            <CardTitle className="text-white">Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Link to="/launch">
-                <Button className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white">
-                  <Rocket className="mr-2 h-4 w-4" />
-                  Launch Token
-                </Button>
-              </Link>
-              <Link to="/explore">
-                <Button variant="outline" className="w-full border-avalanche-red text-avalanche-red hover:bg-avalanche-red hover:text-white">
-                  Explore Projects
-                </Button>
-              </Link>
-              <Link to="/earn">
-                <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-600 hover:text-white">
-                  Start Earning
-                </Button>
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>

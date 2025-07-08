@@ -67,7 +67,7 @@ const Navigation = () => {
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
-                    className="text-white hover:bg-avalanche-gray-dark bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red hover:border-avalanche-red-dark transition-all duration-200"
+                    className="text-white hover:text-white hover:bg-avalanche-gray-dark bg-avalanche-gray-dark flex items-center space-x-2 border border-avalanche-red hover:border-avalanche-red-dark transition-all duration-200"
                   >
                     <Wallet className="h-4 w-4" />
                     <span className="hidden sm:inline font-mono">{formatAddress(address!)}</span>

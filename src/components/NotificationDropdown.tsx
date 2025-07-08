@@ -24,7 +24,7 @@ const NotificationDropdown = () => {
         <Button 
           variant="ghost" 
           size="icon" 
-          className="text-white hover:bg-avalanche-gray-dark relative transition-all duration-200"
+          className="text-white hover:text-white hover:bg-avalanche-gray-dark relative transition-all duration-200"
         >
           <Bell className="h-4 w-4" />
           {unreadCount > 0 && (

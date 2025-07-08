@@ -34,6 +34,10 @@ const Launch = () => {
     image: null as File | null,
   });
 
+  // Add state for created token name and ticker
+  const [createdTokenName, setCreatedTokenName] = useState("");
+  const [createdTokenTicker, setCreatedTokenTicker] = useState("");
+
   const handleImageUpload = (file: File | null, type: 'token' | 'nft') => {
     if (type === 'token') {
       setTokenData({...tokenData, image: file});
@@ -117,7 +121,9 @@ const Launch = () => {
       
       console.log("Token deployed successfully at:", contractAddress);
       
-      // Set the created token address for the modal
+      // Set the created token address, name, and ticker for the modal
+      setCreatedTokenName(tokenData.name);
+      setCreatedTokenTicker(tokenData.ticker);
       setCreatedTokenAddress(contractAddress);
       setShowSuccessModal(true);
       toast.success("Token created successfully!");
@@ -274,10 +280,14 @@ const Launch = () => {
                         id="fun-supply"
                         placeholder="e.g., 1000000"
                         value={tokenData.supply}
-                        onChange={(e) => setTokenData({...tokenData, supply: e.target.value})}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          setTokenData({...tokenData, supply: value});
+                        }}
                         className="bg-black border-avalanche-gray-medium text-white"
-                        type="number"
-                        min="1"
+                        type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                       />
                     </div>
                     <div>
@@ -523,8 +533,8 @@ const Launch = () => {
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         tokenAddress={createdTokenAddress}
-        tokenName={tokenData.name}
-        tokenTicker={tokenData.ticker}
+        tokenName={createdTokenName}
+        tokenTicker={createdTokenTicker}
       />
     </div>
   );

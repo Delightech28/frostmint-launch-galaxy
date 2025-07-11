@@ -123,20 +123,22 @@ const Dashboard = () => {
                 {userTokens.map((token, index) => (
                   <Card key={token.id} className="bg-black border-avalanche-gray-medium">
                     <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <div className="flex items-center space-x-2">
-                            {token.image_url && (
-                              <img
-                                src={token.image_url}
-                                alt={token.name}
-                                className="w-8 h-8 rounded-full object-cover border border-avalanche-gray-medium"
-                              />
-                            )}
-                            <h4 className="text-white font-semibold">{token.name}</h4>
+                        <div className="flex items-start justify-between mb-3">
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              {token.image_url && (
+                                <img
+                                  src={token.image_url}
+                                  alt={token.name}
+                                  className="w-8 h-8 rounded-full object-cover border border-avalanche-gray-medium"
+                                />
+                              )}
+                              <div>
+                                <h4 className="text-white font-semibold">{token.name}</h4>
+                                <p className="text-avalanche-red text-sm">${token.ticker}</p>
+                              </div>
+                            </div>
                           </div>
-                          <p className="text-avalanche-red text-sm">${token.ticker}</p>
-                        </div>
                         <Button
                           variant="ghost"
                           size="sm"

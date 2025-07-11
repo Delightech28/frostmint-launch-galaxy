@@ -51,7 +51,12 @@ const Explore = () => {
           return;
         }
 
-        setTokens(data || []);
+        // Convert initial_supply from string to number to match Token interface
+        const tokensWithNumber = (data || []).map(token => ({
+          ...token,
+          initial_supply: parseInt(token.initial_supply)
+        }));
+        setTokens(tokensWithNumber);
       } catch (error) {
         console.error('Error fetching tokens:', error);
       } finally {
@@ -72,7 +77,10 @@ const Explore = () => {
           table: 'tokens',
         },
         (payload) => {
-          const newToken = payload.new as Token;
+          const newToken = {
+            ...payload.new,
+            initial_supply: parseInt(payload.new.initial_supply)
+          } as Token;
           setTokens(prev => [newToken, ...prev]);
         }
       )

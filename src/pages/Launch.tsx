@@ -35,7 +35,16 @@ const Launch = () => {
   const [createdTokenAddress, setCreatedTokenAddress] = useState("");
   const [activeTab, setActiveTab] = useState("fun-coin");
   
-  const [tokenData, setTokenData] = useState({
+  // Separate state for fun coin and trading coin
+  const [funCoinData, setFunCoinData] = useState({
+    name: "",
+    ticker: "",
+    supply: "",
+    description: "",
+    image: null as File | null,
+  });
+
+  const [tradingCoinData, setTradingCoinData] = useState({
     name: "",
     ticker: "",
     supply: "",
@@ -59,9 +68,23 @@ const Launch = () => {
   const [checkingName, setCheckingName] = useState(false);
   const [checkingTicker, setCheckingTicker] = useState(false);
 
+  // Get current token data based on active tab
+  const getCurrentTokenData = () => {
+    return activeTab === 'fun-coin' ? funCoinData : tradingCoinData;
+  };
+
+  const setCurrentTokenData = (data: any) => {
+    if (activeTab === 'fun-coin') {
+      setFunCoinData(data);
+    } else {
+      setTradingCoinData(data);
+    }
+  };
+
   const handleImageUpload = (file: File | null, type: 'token' | 'nft') => {
     if (type === 'token') {
-      setTokenData({...tokenData, image: file});
+      const currentData = getCurrentTokenData();
+      setCurrentTokenData({...currentData, image: file});
     } else {
       setNftData({...nftData, image: file});
     }
@@ -69,7 +92,8 @@ const Launch = () => {
 
   const removeImage = (type: 'token' | 'nft') => {
     if (type === 'token') {
-      setTokenData({...tokenData, image: null});
+      const currentData = getCurrentTokenData();
+      setCurrentTokenData({...currentData, image: null});
     } else {
       setNftData({...nftData, image: null});
     }
@@ -91,7 +115,8 @@ const Launch = () => {
   const handleTickerChange = (value: string) => {
     // Auto-format ticker: 3-6 characters, uppercase, letters only
     const formatted = value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
-    setTokenData({...tokenData, ticker: formatted});
+    const currentData = getCurrentTokenData();
+    setCurrentTokenData({...currentData, ticker: formatted});
   };
 
   const isValidTicker = (ticker: string) => {
@@ -100,7 +125,8 @@ const Launch = () => {
 
   // Real-time check for token name
   useEffect(() => {
-    if (!tokenData.name) {
+    const currentData = getCurrentTokenData();
+    if (!currentData.name) {
       setNameAvailable(null);
       return;
     }
@@ -109,16 +135,17 @@ const Launch = () => {
       const { data, error } = await supabase
         .from('tokens')
         .select('id')
-        .eq('name', tokenData.name);
+        .eq('name', currentData.name);
       setNameAvailable(!(data && data.length > 0));
       setCheckingName(false);
     }, 500);
     return () => clearTimeout(timeout);
-  }, [tokenData.name]);
+  }, [funCoinData.name, tradingCoinData.name, activeTab]);
 
   // Real-time check for ticker symbol
   useEffect(() => {
-    if (!tokenData.ticker) {
+    const currentData = getCurrentTokenData();
+    if (!currentData.ticker) {
       setTickerAvailable(null);
       return;
     }
@@ -127,39 +154,41 @@ const Launch = () => {
       const { data, error } = await supabase
         .from('tokens')
         .select('id')
-        .eq('ticker', tokenData.ticker);
+        .eq('ticker', currentData.ticker);
       setTickerAvailable(!(data && data.length > 0));
       setCheckingTicker(false);
     }, 500);
     return () => clearTimeout(timeout);
-  }, [tokenData.ticker]);
+  }, [funCoinData.ticker, tradingCoinData.ticker, activeTab]);
 
   const handleCreateToken = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    const currentData = getCurrentTokenData();
     
     if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
       return;
     }
 
-    if (!tokenData.name || !tokenData.ticker || !tokenData.supply) {
+    if (!currentData.name || !currentData.ticker || !currentData.supply) {
       toast.error("Please fill in all required fields");
       return;
     }
 
-    if (!isValidTicker(tokenData.ticker)) {
+    if (!isValidTicker(currentData.ticker)) {
       toast.error("Ticker must be 3-6 characters");
       return;
     }
 
-    const supplyNumber = parseInt(tokenData.supply);
+    const supplyNumber = parseInt(currentData.supply);
     if (isNaN(supplyNumber) || supplyNumber <= 0) {
       toast.error("Please enter a valid supply number");
       return;
     }
 
-    if (!tokenData.image) {
+    if (!currentData.image) {
       toast.error("Token image is required");
       return;
     }
@@ -168,14 +197,14 @@ const Launch = () => {
       setIsCreating(true);
       toast.info("Uploading image...");
       // Upload image to Supabase Storage
-      const imageUrl = await uploadTokenImage(tokenData.image, tokenData.name);
+      const imageUrl = await uploadTokenImage(currentData.image, currentData.name);
       toast.info("Preparing to deploy your token...");
 
       // Check for duplicate name or ticker
       const { data: existingTokens, error } = await supabase
         .from('tokens')
         .select('id')
-        .or(`name.eq.${tokenData.name},ticker.eq.${tokenData.ticker}`);
+        .or(`name.eq.${currentData.name},ticker.eq.${currentData.ticker}`);
 
       if (existingTokens && existingTokens.length > 0) {
         toast.error("A token with this name or ticker already exists.");
@@ -186,11 +215,11 @@ const Launch = () => {
       const tokenType = getTokenType(activeTab);
       
       const tokenDataForDeployment: TokenData = {
-        name: tokenData.name,
-        ticker: tokenData.ticker,
+        name: currentData.name,
+        ticker: currentData.ticker,
         initialSupply: supplyNumber,
         tokenType: tokenType,
-        description: tokenData.description,
+        description: currentData.description,
         imageUrl: imageUrl // Use the uploaded image's public URL
       };
       
@@ -199,14 +228,14 @@ const Launch = () => {
       console.log("Token deployed successfully at:", contractAddress);
       
       // Set the created token address, name, and ticker for the modal
-      setCreatedTokenName(tokenData.name);
-      setCreatedTokenTicker(tokenData.ticker);
+      setCreatedTokenName(currentData.name);
+      setCreatedTokenTicker(currentData.ticker);
       setCreatedTokenAddress(contractAddress);
       setShowSuccessModal(true);
       toast.success("Token created successfully!");
       
       // Reset form
-      setTokenData({ name: "", ticker: "", supply: "", description: "", image: null });
+      setCurrentTokenData({ name: "", ticker: "", supply: "", description: "", image: null });
       
     } catch (error: any) {
       console.error("Error creating token:", error);
@@ -320,17 +349,17 @@ const Launch = () => {
                     <CardTitle className="text-white">Fun/Meme Coin Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="fun-name" className="text-gray-300">Token Name *</Label>
-                      <Input
-                        id="fun-name"
-                        placeholder="e.g., DogeMoon"
-                        value={tokenData.name}
-                        onChange={(e) => setTokenData({...tokenData, name: e.target.value})}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                        maxLength={20}
-                      />
-                      {tokenData.name && (
+                     <div>
+                       <Label htmlFor="fun-name" className="text-gray-300">Token Name *</Label>
+                       <Input
+                         id="fun-name"
+                         placeholder="e.g., DogeMoon"
+                         value={funCoinData.name}
+                         onChange={(e) => setFunCoinData({...funCoinData, name: e.target.value})}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                         maxLength={20}
+                       />
+                       {funCoinData.name && (
                         <div className="mt-1 text-xs">
                           {checkingName ? (
                             <span className="text-gray-400">Checking availability...</span>
@@ -346,19 +375,22 @@ const Launch = () => {
                       <Label htmlFor="fun-ticker" className="text-gray-300">
                         Ticker Symbol * <span className="text-xs text-gray-400">(3-6 letters only)</span>
                       </Label>
-                      <Input
-                        id="fun-ticker"
-                        placeholder="e.g., DMOON"
-                        value={tokenData.ticker}
-                        onChange={(e) => handleTickerChange(e.target.value)}
-                        className={`bg-black border-avalanche-gray-medium text-white ${
-                          tokenData.ticker && !isValidTicker(tokenData.ticker) 
-                            ? 'border-red-500' 
-                            : ''
-                        }`}
-                        maxLength={6}
-                      />
-                      {tokenData.ticker && (
+                       <Input
+                         id="fun-ticker"
+                         placeholder="e.g., DMOON"
+                         value={funCoinData.ticker}
+                         onChange={(e) => {
+                           const formatted = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
+                           setFunCoinData({...funCoinData, ticker: formatted});
+                         }}
+                         className={`bg-black border-avalanche-gray-medium text-white ${
+                           funCoinData.ticker && !isValidTicker(funCoinData.ticker) 
+                             ? 'border-red-500' 
+                             : ''
+                         }`}
+                         maxLength={6}
+                       />
+                       {funCoinData.ticker && (
                         <div className="mt-1 text-xs">
                           {checkingTicker ? (
                             <span className="text-gray-400">Checking availability...</span>
@@ -369,65 +401,65 @@ const Launch = () => {
                           ) : null}
                         </div>
                       )}
-                      {tokenData.ticker && !isValidTicker(tokenData.ticker) && (
-                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
-                      )}
-                    </div>
-                    <div>
-                      <Label htmlFor="fun-supply" className="text-gray-300">Initial Supply *</Label>
-                      <Input
-                        id="fun-supply"
-                        placeholder="e.g., 1000000"
-                        value={tokenData.supply}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '');
-                          setTokenData({...tokenData, supply: value});
-                        }}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="fun-description" className="text-gray-300">Description</Label>
-                      <Textarea
-                        id="fun-description"
-                        placeholder="Tell the community about your meme coin..."
-                        value={tokenData.description}
-                        onChange={(e) => setTokenData({...tokenData, description: e.target.value})}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                      />
-                    </div>
-                    
-                    <ImageUploadSection
-                      file={tokenData.image}
-                      onFileChange={(file) => handleImageUpload(file, 'token')}
-                      onRemove={() => removeImage('token')}
-                      type="token"
-                    />
-                    
-                    <div className="bg-avalanche-gray-medium p-4 rounded-lg">
-                      <p className="text-gray-300 text-sm mb-2">Network: <span className="text-avalanche-red font-semibold">Avalanche Fuji Testnet</span></p>
-                      <p className="text-gray-400 text-xs">Make sure you have AVAX in your wallet for gas fees. You can get testnet AVAX from the Avalanche faucet.</p>
-                    </div>
-                    
-                    <Button 
-                      type="button"
-                      onClick={handleCreateToken}
-                      disabled={
-                        !isConnected ||
-                        isCreating ||
-                        !tokenData.name ||
-                        !tokenData.ticker ||
-                        !tokenData.supply ||
-                        !isValidTicker(tokenData.ticker) ||
-                        !tokenData.image ||
-                        nameAvailable === false ||
-                        tickerAvailable === false
-                      }
-                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
-                    >
+                       {funCoinData.ticker && !isValidTicker(funCoinData.ticker) && (
+                         <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
+                       )}
+                     </div>
+                     <div>
+                       <Label htmlFor="fun-supply" className="text-gray-300">Initial Supply *</Label>
+                       <Input
+                         id="fun-supply"
+                         placeholder="e.g., 1000000"
+                         value={funCoinData.supply}
+                         onChange={(e) => {
+                           const value = e.target.value.replace(/[^0-9]/g, '');
+                           setFunCoinData({...funCoinData, supply: value});
+                         }}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                         type="text"
+                         inputMode="numeric"
+                         pattern="[0-9]*"
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="fun-description" className="text-gray-300">Description</Label>
+                       <Textarea
+                         id="fun-description"
+                         placeholder="Tell the community about your meme coin..."
+                         value={funCoinData.description}
+                         onChange={(e) => setFunCoinData({...funCoinData, description: e.target.value})}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                       />
+                     </div>
+                     
+                     <ImageUploadSection
+                       file={funCoinData.image}
+                       onFileChange={(file) => handleImageUpload(file, 'token')}
+                       onRemove={() => removeImage('token')}
+                       type="token"
+                     />
+                     
+                     <div className="bg-avalanche-gray-medium p-4 rounded-lg">
+                       <p className="text-gray-300 text-sm mb-2">Network: <span className="text-avalanche-red font-semibold">Avalanche Fuji Testnet</span></p>
+                       <p className="text-gray-400 text-xs">Make sure you have AVAX in your wallet for gas fees. You can get testnet AVAX from the Avalanche faucet.</p>
+                     </div>
+                     
+                     <Button 
+                       type="button"
+                       onClick={handleCreateToken}
+                       disabled={
+                         !isConnected ||
+                         isCreating ||
+                         !funCoinData.name ||
+                         !funCoinData.ticker ||
+                         !funCoinData.supply ||
+                         !isValidTicker(funCoinData.ticker) ||
+                         !funCoinData.image ||
+                         nameAvailable === false ||
+                         tickerAvailable === false
+                       }
+                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white disabled:opacity-50"
+                     >
                       {isCreating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -447,74 +479,77 @@ const Launch = () => {
                     <CardTitle className="text-white">Trading Coin Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
-                      <Label htmlFor="trading-name" className="text-gray-300">Token Name *</Label>
-                      <Input
-                        id="trading-name"
-                        placeholder="e.g., AvalancheGem"
-                        value={tokenData.name}
-                        onChange={(e) => setTokenData({...tokenData, name: e.target.value})}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol *</Label>
-                      <Input
-                        id="trading-ticker"
-                        placeholder="e.g., AGEM"
-                        value={tokenData.ticker}
-                        onChange={(e) => handleTickerChange(e.target.value)}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="trading-supply" className="text-gray-300">Initial Supply *</Label>
-                      <Input
-                        id="trading-supply"
-                        placeholder="e.g., 10000000"
-                        value={tokenData.supply}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/[^0-9]/g, '');
-                          setTokenData({...tokenData, supply: value});
-                        }}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="trading-description" className="text-gray-300">Description</Label>
-                      <Textarea
-                        id="trading-description"
-                        placeholder="Describe your trading coin..."
-                        value={tokenData.description}
-                        onChange={(e) => setTokenData({...tokenData, description: e.target.value})}
-                        className="bg-black border-avalanche-gray-medium text-white"
-                      />
-                    </div>
-                    
-                    <ImageUploadSection
-                      file={tokenData.image}
-                      onFileChange={(file) => handleImageUpload(file, 'token')}
-                      onRemove={() => removeImage('token')}
-                      type="token"
-                    />
-                    
-                    <Button 
-                      type="button"
-                      onClick={handleCreateToken}
-                      disabled={
-                        !isConnected ||
-                        isCreating ||
-                        !tokenData.name ||
-                        !tokenData.ticker ||
-                        !tokenData.supply ||
-                        nameAvailable === false ||
-                        tickerAvailable === false
-                      }
-                      className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
-                    >
+                     <div>
+                       <Label htmlFor="trading-name" className="text-gray-300">Token Name *</Label>
+                       <Input
+                         id="trading-name"
+                         placeholder="e.g., AvalancheGem"
+                         value={tradingCoinData.name}
+                         onChange={(e) => setTradingCoinData({...tradingCoinData, name: e.target.value})}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol *</Label>
+                       <Input
+                         id="trading-ticker"
+                         placeholder="e.g., AGEM"
+                         value={tradingCoinData.ticker}
+                         onChange={(e) => {
+                           const formatted = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
+                           setTradingCoinData({...tradingCoinData, ticker: formatted});
+                         }}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="trading-supply" className="text-gray-300">Initial Supply *</Label>
+                       <Input
+                         id="trading-supply"
+                         placeholder="e.g., 10000000"
+                         value={tradingCoinData.supply}
+                         onChange={(e) => {
+                           const value = e.target.value.replace(/[^0-9]/g, '');
+                           setTradingCoinData({...tradingCoinData, supply: value});
+                         }}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                         type="text"
+                         inputMode="numeric"
+                         pattern="[0-9]*"
+                       />
+                     </div>
+                     <div>
+                       <Label htmlFor="trading-description" className="text-gray-300">Description</Label>
+                       <Textarea
+                         id="trading-description"
+                         placeholder="Describe your trading coin..."
+                         value={tradingCoinData.description}
+                         onChange={(e) => setTradingCoinData({...tradingCoinData, description: e.target.value})}
+                         className="bg-black border-avalanche-gray-medium text-white"
+                       />
+                     </div>
+                     
+                     <ImageUploadSection
+                       file={tradingCoinData.image}
+                       onFileChange={(file) => handleImageUpload(file, 'token')}
+                       onRemove={() => removeImage('token')}
+                       type="token"
+                     />
+                     
+                     <Button 
+                       type="button"
+                       onClick={handleCreateToken}
+                       disabled={
+                         !isConnected ||
+                         isCreating ||
+                         !tradingCoinData.name ||
+                         !tradingCoinData.ticker ||
+                         !tradingCoinData.supply ||
+                         nameAvailable === false ||
+                         tickerAvailable === false
+                       }
+                       className="w-full bg-avalanche-red hover:bg-avalanche-red-dark text-white"
+                     >
                       {isCreating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -594,54 +629,54 @@ const Launch = () => {
               <CardContent>
                 <div className="bg-black p-6 rounded-lg border border-avalanche-gray-medium">
                   <div className="text-center">
-                    <div className="w-16 h-16 bg-avalanche-red rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                      {(activeTab === 'nft' ? nftData.image : tokenData.image) ? (
-                        <img 
-                          src={URL.createObjectURL(activeTab === 'nft' ? nftData.image! : tokenData.image!)} 
-                          alt="Token preview" 
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <span className="text-white font-bold text-xl">
-                          {(activeTab === 'nft' ? nftData.name : tokenData.name) 
-                            ? (activeTab === 'nft' ? nftData.name.charAt(0) : tokenData.name.charAt(0)) 
-                            : "?"}
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="text-xl font-bold text-white mb-2">
-                      {activeTab === 'nft' 
-                        ? (nftData.name || "Your NFT Collection") 
-                        : (tokenData.name || "Your Token Name")}
-                    </h3>
-                    <p className="text-gray-400 text-sm mb-4">
-                      {activeTab === 'nft' 
-                        ? `${nftData.quantity || "1000"} NFTs`
-                        : `$${tokenData.ticker || "TICKER"}`}
-                    </p>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <div className="text-gray-400">
-                          {activeTab === 'nft' ? 'Quantity' : 'Supply'}
-                        </div>
-                        <div className="text-white font-semibold">
-                          {activeTab === 'nft' 
-                            ? (nftData.quantity ? Number(nftData.quantity).toLocaleString() : "1,000")
-                            : (tokenData.supply ? Number(tokenData.supply).toLocaleString() : "1,000,000")}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-gray-400">Network</div>
-                        <div className="text-avalanche-red font-semibold">Avalanche</div>
-                      </div>
-                    </div>
-                    {((activeTab === 'nft' && nftData.description) || (activeTab !== 'nft' && tokenData.description)) && (
-                      <div className="mt-4 p-3 bg-avalanche-gray-medium rounded text-left">
-                        <p className="text-gray-300 text-sm">
-                          {activeTab === 'nft' ? nftData.description : tokenData.description}
-                        </p>
-                      </div>
-                    )}
+                     <div className="w-16 h-16 bg-avalanche-red rounded-full mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                       {(activeTab === 'nft' ? nftData.image : getCurrentTokenData().image) ? (
+                         <img 
+                           src={URL.createObjectURL(activeTab === 'nft' ? nftData.image! : getCurrentTokenData().image!)} 
+                           alt="Token preview" 
+                           className="w-full h-full object-cover"
+                         />
+                       ) : (
+                         <span className="text-white font-bold text-xl">
+                           {(activeTab === 'nft' ? nftData.name : getCurrentTokenData().name) 
+                             ? (activeTab === 'nft' ? nftData.name.charAt(0) : getCurrentTokenData().name.charAt(0)) 
+                             : "?"}
+                         </span>
+                       )}
+                     </div>
+                     <h3 className="text-xl font-bold text-white mb-2">
+                       {activeTab === 'nft' 
+                         ? (nftData.name || "Your NFT Collection") 
+                         : (getCurrentTokenData().name || "Your Token Name")}
+                     </h3>
+                     <p className="text-gray-400 text-sm mb-4">
+                       {activeTab === 'nft' 
+                         ? `${nftData.quantity || "1000"} NFTs`
+                         : `$${getCurrentTokenData().ticker || "TICKER"}`}
+                     </p>
+                     <div className="grid grid-cols-2 gap-4 text-sm">
+                       <div>
+                         <div className="text-gray-400">
+                           {activeTab === 'nft' ? 'Quantity' : 'Supply'}
+                         </div>
+                         <div className="text-white font-semibold">
+                           {activeTab === 'nft' 
+                             ? (nftData.quantity ? Number(nftData.quantity).toLocaleString() : "1,000")
+                             : (getCurrentTokenData().supply ? Number(getCurrentTokenData().supply).toLocaleString() : "1,000,000")}
+                         </div>
+                       </div>
+                       <div>
+                         <div className="text-gray-400">Network</div>
+                         <div className="text-avalanche-red font-semibold">Avalanche</div>
+                       </div>
+                     </div>
+                     {((activeTab === 'nft' && nftData.description) || (activeTab !== 'nft' && getCurrentTokenData().description)) && (
+                       <div className="mt-4 p-3 bg-avalanche-gray-medium rounded text-left">
+                         <p className="text-gray-300 text-sm">
+                           {activeTab === 'nft' ? nftData.description : getCurrentTokenData().description}
+                         </p>
+                       </div>
+                     )}
                   </div>
                 </div>
               </CardContent>

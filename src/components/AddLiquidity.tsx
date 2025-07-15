@@ -42,12 +42,13 @@ function parseUnitsSafe(amount: string, decimals: number) {
   }
 }
 
-const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, memeTokenImageUrl, onClose }: {
+const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, memeTokenImageUrl, onClose, onAddLiquiditySuccess }: {
   memeTokenAddress: string;
   memeTokenSymbol: string;
   memeTokenDecimals: number;
   memeTokenImageUrl?: string;
   onClose: () => void;
+  onAddLiquiditySuccess?: () => void;
 }) => {
   const [dex, setDex] = useState(DEX_OPTIONS[0].value);
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
@@ -139,6 +140,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
       setTxStatus({ status: "success", message: "Liquidity added!", hash: tx.hash });
       setAmountMemeToken("");
       setAmountAVAX("");
+      if (onAddLiquiditySuccess) onAddLiquiditySuccess();
     } catch (e: any) {
       setError(e.message || "Add liquidity failed");
       setTxStatus({ status: "error", message: e.message || "Add liquidity failed" });
@@ -148,33 +150,41 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
   };
 
   // Validation
-  const canApprove = !!amountMemeToken && parseFloat(amountMemeToken) > 0 && !isApproved && !isApproving;
-  const canAddLiquidity = !!amountMemeToken && !!amountAVAX && isApproved && !isAdding && parseFloat(amountMemeToken) > 0 && parseFloat(amountAVAX) > 0;
+  const parsedMemeTokenBalance = parseFloat(memeTokenBalance.replace(/,/g, ''));
+  const parsedAmountMemeToken = parseFloat(amountMemeToken);
+  const hasInsufficientToken = !!amountMemeToken && parsedAmountMemeToken > parsedMemeTokenBalance;
+
+  const parsedAvaxBalance = parseFloat(avaxBalance.replace(/,/g, ''));
+  const parsedAmountAvax = parseFloat(amountAVAX);
+  const hasInsufficientAvax = !!amountAVAX && parsedAmountAvax > parsedAvaxBalance;
+
+  const canApprove = !!amountMemeToken && parsedAmountMemeToken > 0 && !isApproved && !isApproving && !hasInsufficientToken && !hasInsufficientAvax;
+  const canAddLiquidity = !!amountMemeToken && !!amountAVAX && isApproved && !isAdding && parsedAmountMemeToken > 0 && parsedAmountAvax > 0 && !hasInsufficientToken && !hasInsufficientAvax;
 
   return (
-    <div className="max-w-md mx-auto bg-white rounded-lg shadow-lg p-6 mt-8">
+    <div className="max-w-md mx-auto bg-black rounded-lg border border-avalanche-gray-medium p-6 mt-8">
       {memeTokenImageUrl && (
         <div className="flex justify-center mb-4">
-          <img src={memeTokenImageUrl} alt={memeTokenSymbol} className="w-16 h-16 rounded-full object-cover border" />
+          <img src={memeTokenImageUrl} alt={memeTokenSymbol} className="w-16 h-16 rounded-full object-cover border-2 border-avalanche-red" />
         </div>
       )}
-      <DialogTitle>Add Liquidity to {memeTokenSymbol}/AVAX</DialogTitle>
-      <DialogDescription>
-        Select DEX and supply both {memeTokenSymbol} and AVAX to enable trading for your new token.
+      <DialogTitle className="text-white text-xl font-bold mb-1">Add Liquidity to <span className="text-avalanche-red">{memeTokenSymbol}/AVAX</span></DialogTitle>
+      <DialogDescription className="text-gray-300 mb-4">
+        Select DEX and supply both <span className="text-avalanche-red font-semibold">{memeTokenSymbol}</span> and <span className="text-avalanche-red font-semibold">AVAX</span> to enable trading for your new token.
       </DialogDescription>
       <div className="mb-4">
-        <Label htmlFor="dex">Select DEX</Label>
+        <Label htmlFor="dex" className="text-gray-300">Select DEX</Label>
         <select
           id="dex"
-          className="w-full border rounded p-2 mt-1"
+          className="w-full bg-black border border-avalanche-gray-medium rounded p-2 pr-8 mt-1 text-white focus:outline-none focus:border-avalanche-red"
           value={dex}
           onChange={e => setDex(e.target.value)}
         >
-          {DEX_OPTIONS.map(opt => <option key={opt.value} value={opt.value}>{opt.name}</option>)}
+          {DEX_OPTIONS.map(opt => <option key={opt.value} value={opt.value} className="bg-black text-white">{opt.name}</option>)}
         </select>
       </div>
       <div className="mb-4">
-        <Label htmlFor="memeToken">{memeTokenSymbol} Amount</Label>
+        <Label htmlFor="memeToken" className="text-gray-300">{memeTokenSymbol} Amount</Label>
         <Input
           id="memeToken"
           type="number"
@@ -183,11 +193,15 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
           value={amountMemeToken}
           onChange={e => setAmountMemeToken(e.target.value)}
           placeholder={`Balance: ${memeTokenBalance}`}
+          className="bg-black border-avalanche-gray-medium text-white"
         />
-        <div className="text-xs text-gray-500 mt-1">Balance: {memeTokenBalance} {memeTokenSymbol}</div>
+        <div className="text-xs text-gray-400 mt-1">Balance: {memeTokenBalance} <span className="text-avalanche-red">{memeTokenSymbol}</span></div>
+        {hasInsufficientToken && (
+          <div className="text-red-500 text-xs mt-1">Insufficient token balance</div>
+        )}
       </div>
       <div className="mb-4">
-        <Label htmlFor="avax">AVAX Amount</Label>
+        <Label htmlFor="avax" className="text-gray-300">AVAX Amount</Label>
         <Input
           id="avax"
           type="number"
@@ -196,12 +210,16 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
           value={amountAVAX}
           onChange={e => setAmountAVAX(e.target.value)}
           placeholder={`Balance: ${avaxBalance}`}
+          className="bg-black border-avalanche-gray-medium text-white"
         />
-        <div className="text-xs text-gray-500 mt-1">Balance: {avaxBalance} AVAX</div>
+        <div className="text-xs text-gray-400 mt-1">Balance: {avaxBalance} <span className="text-avalanche-red">AVAX</span></div>
+        {hasInsufficientAvax && (
+          <div className="text-red-500 text-xs mt-1">Insufficient AVAX balance</div>
+        )}
       </div>
       {error && <div className="text-red-500 text-sm mb-2">{error}</div>}
       {txStatus && (
-        <div className={`mb-2 text-sm ${txStatus.status === "error" ? "text-red-500" : txStatus.status === "success" ? "text-green-600" : "text-blue-600"}`}>
+        <div className={`mb-2 text-sm ${txStatus.status === "error" ? "text-red-500" : txStatus.status === "success" ? "text-green-400" : "text-avalanche-red"}`}>
           {txStatus.message}
           {txStatus.hash && (
             <>
@@ -210,7 +228,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
                 href={`https://testnet.snowtrace.io/tx/${txStatus.hash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="underline"
+                className="underline text-avalanche-red"
               >
                 View on Snowtrace
               </a>
@@ -220,15 +238,15 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
       )}
       <div className="flex gap-2 mt-4">
         {!isApproved && (
-          <Button onClick={handleApprove} disabled={!canApprove} className="w-1/2">
+          <Button onClick={handleApprove} disabled={!canApprove} className="w-1/2 bg-avalanche-red hover:bg-avalanche-red-dark text-white">
             {isApproving ? "Approving..." : `Approve ${memeTokenSymbol}`}
           </Button>
         )}
-        <Button onClick={handleAddLiquidity} disabled={!canAddLiquidity} className="w-1/2">
+        <Button onClick={handleAddLiquidity} disabled={!canAddLiquidity} className="w-1/2 bg-avalanche-red hover:bg-avalanche-red-dark text-white">
           {isAdding ? "Adding..." : "Add Liquidity"}
         </Button>
       </div>
-      <Button variant="outline" className="w-full mt-4" onClick={onClose}>Close</Button>
+      <Button variant="outline" className="w-full mt-4 border-avalanche-red text-avalanche-red hover:bg-avalanche-red hover:text-white" onClick={onClose}>Close</Button>
     </div>
   );
 };

@@ -522,17 +522,33 @@ const Launch = () => {
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol *</Label>
+                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol * <span className="text-xs text-gray-400">(3-6 letters only)</span></Label>
                       <Input
                         id="trading-ticker"
                         placeholder="e.g., AGEM"
                         value={tradingCoinData.ticker}
-                        onChange={(e) => {
-                          const formatted = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
-                          setTradingCoinData({...tradingCoinData, ticker: formatted});
-                        }}
-                        className="bg-black border-avalanche-gray-medium text-white"
+                        onChange={(e) => handleTickerChange(e.target.value)}
+                        className={`bg-black border-avalanche-gray-medium text-white ${
+                          tradingCoinData.ticker && !isValidTicker(tradingCoinData.ticker) 
+                            ? 'border-red-500' 
+                            : ''
+                        }`}
+                        maxLength={6}
                       />
+                      {tradingCoinData.ticker && (
+                        <div className="mt-1 text-xs">
+                          {checkingTicker ? (
+                            <span className="text-gray-400">Checking availability...</span>
+                          ) : tickerAvailable === false ? (
+                            <span className="text-red-400">Ticker symbol already exists</span>
+                          ) : tickerAvailable === true ? (
+                            <span className="text-green-400">Ticker symbol is available</span>
+                          ) : null}
+                        </div>
+                      )}
+                      {tradingCoinData.ticker && !isValidTicker(tradingCoinData.ticker) && (
+                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
+                      )}
                     </div>
                     <div>
                       <Label htmlFor="trading-supply" className="text-gray-300">Initial Supply *</Label>
@@ -567,6 +583,11 @@ const Launch = () => {
                       onRemove={() => removeImage('token')}
                       type="token"
                     />
+                    
+                    <div className="bg-avalanche-gray-medium p-4 rounded-lg">
+                      <p className="text-gray-300 text-sm mb-2">Network: <span className="text-avalanche-red font-semibold">Avalanche Fuji Testnet</span></p>
+                      <p className="text-gray-400 text-xs">Make sure you have AVAX in your wallet for gas fees. You can get testnet AVAX from the Avalanche faucet.</p>
+                    </div>
                     
                     <Button 
                       type="button"
@@ -734,6 +755,10 @@ const Launch = () => {
             memeTokenDecimals={18}
             memeTokenImageUrl={createdTokenImageUrl}
             onClose={() => setShowAddLiquidityModal(false)}
+            onAddLiquiditySuccess={() => {
+              setShowAddLiquidityModal(false);
+              setShowSuccessModal(true);
+            }}
           />
         </DialogContent>
       </Dialog>

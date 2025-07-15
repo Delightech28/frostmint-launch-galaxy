@@ -7,6 +7,7 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { ethers } from "ethers";
 
 const Dashboard = () => {
   const { address } = useWallet();
@@ -161,7 +162,21 @@ const Dashboard = () => {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Supply:</span>
-                          <span className="text-white">{token.initial_supply.toLocaleString()}</span>
+                          <span className="text-white">
+                            {(() => {
+                              try {
+                                const supply = parseFloat(ethers.formatUnits(BigInt(token.initial_supply), 18));
+                                if (supply >= 1_000_000) {
+                                  return `${(supply / 1_000_000).toFixed(2)}M`;
+                                } else if (supply >= 1_000) {
+                                  return `${(supply / 1_000).toFixed(2)}K`;
+                                }
+                                return supply.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                              } catch {
+                                return token.initial_supply;
+                              }
+                            })()}
+                          </span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-400">Created:</span>

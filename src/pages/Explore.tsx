@@ -7,6 +7,7 @@ import { Search, TrendingUp, Filter, Copy, Clock, Coins } from "lucide-react";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { ethers } from "ethers";
 
 interface Token {
   id: string;
@@ -147,7 +148,12 @@ const Explore = () => {
 
   const generateMockVolume = (supply: number) => {
     const volume = Math.floor(supply * 0.001); // Mock volume as 0.1% of supply
-    return `${(volume / 1000).toFixed(1)}K AVAX`;
+    // Format as AVAX (18 decimals)
+    const formatted = parseFloat(ethers.formatUnits(BigInt(volume), 18));
+    if (formatted >= 1000) {
+      return `${(formatted / 1000).toFixed(1)}K AVAX`;
+    }
+    return `${formatted.toFixed(4)} AVAX`;
   };
 
   const shortenAddress = (address: string) => {
@@ -242,7 +248,7 @@ const Explore = () => {
                         )}
                       </div>
                       <div>
-                        <CardTitle className="text-white text-lg group-hover:text-avalanche-red transition-colors">
+                        <CardTitle className="text-white text-lg">
                           {token.name}
                         </CardTitle>
                         <p className="text-avalanche-red font-mono text-sm font-semibold">
@@ -323,7 +329,15 @@ const Explore = () => {
                       <div>
                         <div className="text-gray-400">Supply</div>
                         <div className="text-white font-semibold">
-                          {(token.initial_supply / 1000000).toFixed(1)}M
+                          {(() => {
+                            const supply = parseFloat(ethers.formatUnits(BigInt(token.initial_supply), 18));
+                            if (supply >= 1_000_000) {
+                              return `${(supply / 1_000_000).toFixed(2)}M`;
+                            } else if (supply >= 1_000) {
+                              return `${(supply / 1_000).toFixed(2)}K`;
+                            }
+                            return supply.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                          })()}
                         </div>
                       </div>
                     </div>

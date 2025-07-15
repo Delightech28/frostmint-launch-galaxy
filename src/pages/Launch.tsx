@@ -38,6 +38,7 @@ const Launch = () => {
   const [createdTokenAddress, setCreatedTokenAddress] = useState("");
   const [activeTab, setActiveTab] = useState("fun-coin");
   
+  // Separate state for fun coin and trading coin
   const [funCoinData, setFunCoinData] = useState({
     name: "",
     ticker: "",
@@ -166,6 +167,8 @@ const Launch = () => {
   const handleCreateToken = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    const currentData = activeTab === 'fun-coin' ? funCoinData : tradingCoinData;
     
     if (!isConnected || !address) {
       toast.error("Please connect your wallet first");
@@ -397,7 +400,10 @@ const Launch = () => {
                         id="fun-ticker"
                         placeholder="e.g., DMOON"
                         value={funCoinData.ticker}
-                        onChange={(e) => handleTickerChange(e.target.value)}
+                        onChange={(e) => {
+                          const formatted = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
+                          setFunCoinData({...funCoinData, ticker: formatted});
+                        }}
                         className={`bg-black border-avalanche-gray-medium text-white ${
                           funCoinData.ticker && !isValidTicker(funCoinData.ticker) 
                             ? 'border-red-500' 
@@ -502,7 +508,6 @@ const Launch = () => {
                         value={tradingCoinData.name}
                         onChange={(e) => setTradingCoinData({...tradingCoinData, name: e.target.value})}
                         className="bg-black border-avalanche-gray-medium text-white"
-                        maxLength={20}
                       />
                       {tradingCoinData.name && (
                         <div className="mt-1 text-xs">
@@ -517,35 +522,17 @@ const Launch = () => {
                       )}
                     </div>
                     <div>
-                      <Label htmlFor="trading-ticker" className="text-gray-300">
-                        Ticker Symbol * <span className="text-xs text-gray-400">(3-6 letters only)</span>
-                      </Label>
+                      <Label htmlFor="trading-ticker" className="text-gray-300">Ticker Symbol *</Label>
                       <Input
                         id="trading-ticker"
                         placeholder="e.g., AGEM"
                         value={tradingCoinData.ticker}
-                        onChange={(e) => handleTickerChange(e.target.value)}
-                        className={`bg-black border-avalanche-gray-medium text-white ${
-                          tradingCoinData.ticker && !isValidTicker(tradingCoinData.ticker) 
-                            ? 'border-red-500' 
-                            : ''
-                        }`}
-                        maxLength={6}
+                        onChange={(e) => {
+                          const formatted = e.target.value.replace(/[^A-Za-z]/g, '').toUpperCase().slice(0, 6);
+                          setTradingCoinData({...tradingCoinData, ticker: formatted});
+                        }}
+                        className="bg-black border-avalanche-gray-medium text-white"
                       />
-                      {tradingCoinData.ticker && (
-                        <div className="mt-1 text-xs">
-                          {checkingTicker ? (
-                            <span className="text-gray-400">Checking availability...</span>
-                          ) : tickerAvailable === false ? (
-                            <span className="text-red-400">Ticker symbol already exists</span>
-                          ) : tickerAvailable === true ? (
-                            <span className="text-green-400">Ticker symbol is available</span>
-                          ) : null}
-                        </div>
-                      )}
-                      {tradingCoinData.ticker && !isValidTicker(tradingCoinData.ticker) && (
-                        <p className="text-red-400 text-xs mt-1">Ticker must be 3-6 letters only</p>
-                      )}
                     </div>
                     <div>
                       <Label htmlFor="trading-supply" className="text-gray-300">Initial Supply *</Label>

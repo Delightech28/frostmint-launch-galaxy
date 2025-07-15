@@ -232,7 +232,7 @@ export const deployToken = async (tokenData: TokenData, userWallet: string): Pro
         name: tokenData.name,
         ticker: tokenData.ticker,
         token_type: tokenData.tokenType,
-        initial_supply: Number(tokenData.initialSupply),
+        initial_supply: tokenData.initialSupply.toString(),
         description: tokenData.description,
         image_url: tokenData.imageUrl,
         creator_wallet: userWallet,

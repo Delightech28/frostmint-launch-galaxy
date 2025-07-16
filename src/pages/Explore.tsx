@@ -4,10 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Search, TrendingUp, Filter, Copy, Clock, Coins } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { ethers } from "ethers";
+import { useNavigate } from "react-router-dom";
+// Subgraph endpoint for Trader Joe Fuji
+const TRADER_JOE_SUBGRAPH = "https://api.thegraph.com/subgraphs/name/traderjoe-xyz/exchange-v2-fuji";
 
 interface Token {
   id: string;
@@ -22,12 +25,78 @@ interface Token {
   contract_address: string;
 }
 
+const FACTORY_ADDRESS = '0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10'; // Trader Joe Fuji
+const FACTORY_ABI = [
+  'function getPair(address tokenA, address tokenB) external view returns (address pair)'
+];
+const PAIR_ABI = [
+  'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+  'function token0() external view returns (address)',
+  'function token1() external view returns (address)'
+];
+const WAVAX = '0xd00ae08403b9bbb9124bb305c09058e32c39a48c';
+
+async function fetchTokenPrice(tokenAddress: string) {
+  const provider = new ethers.JsonRpcProvider('https://api.avax-test.network/ext/bc/C/rpc');
+  const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
+  const pairAddress = await factory.getPair(tokenAddress, WAVAX);
+  if (pairAddress === ethers.ZeroAddress) {
+    return null; // No pool exists
+  }
+  const pair = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+  const [reserve0, reserve1] = await pair.getReserves();
+  const token0 = await pair.token0();
+  const token1 = await pair.token1();
+  let reserveToken, reserveWAVAX;
+  if (token0.toLowerCase() === tokenAddress.toLowerCase()) {
+    reserveToken = reserve0;
+    reserveWAVAX = reserve1;
+  } else {
+    reserveToken = reserve1;
+    reserveWAVAX = reserve0;
+  }
+  if (reserveToken == 0n) return null;
+  const price = Number(ethers.formatUnits(reserveWAVAX, 18)) / Number(ethers.formatUnits(reserveToken, 18));
+  return price;
+}
+
+// Fetch real 24h volume for a token from Trader Joe subgraph
+async function fetchToken24hVolume(tokenAddress: string): Promise<string> {
+  const query = {
+    query: `{
+      tokenDayDatas(where: { token: \"${tokenAddress.toLowerCase()}\" }, orderBy: date, orderDirection: desc, first: 1) {
+        volumeToken
+        date
+      }
+    }`
+  };
+  try {
+    const res = await fetch(TRADER_JOE_SUBGRAPH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(query)
+    });
+    const data = await res.json();
+    const volume = data.data?.tokenDayDatas?.[0]?.volumeToken;
+    if (!volume) return "0";
+    // Format as human readable (18 decimals)
+    return ethers.formatUnits(volume, 18);
+  } catch {
+    return "-";
+  }
+}
+
 const Explore = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeFilter, setActiveFilter] = useState("all");
   const [tokens, setTokens] = useState<Token[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const [tradingPrices, setTradingPrices] = useState<{ [address: string]: { price: number | null, dex: string | null } }>({});
+  const priceFetchRef = useRef<{ [address: string]: boolean }>({});
+  const [volumes, setVolumes] = useState<{ [address: string]: string }>({});
+  const [volumesLoading, setVolumesLoading] = useState<{ [address: string]: boolean }>({});
+  const navigate = useNavigate();
 
   const filters = [
     { id: "all", label: "All", icon: null },
@@ -91,6 +160,34 @@ const Explore = () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
+  useEffect(() => {
+    // Only fetch for trading coins
+    const tradingTokens = tokens.filter(token => getTokenType(token.token_type) === "Trading Coin");
+    tradingTokens.forEach(token => {
+      if (!token.contract_address || priceFetchRef.current[token.contract_address]) return;
+      priceFetchRef.current[token.contract_address] = true;
+      fetchTokenPrice(token.contract_address)
+        .then(price => {
+          setTradingPrices(prices => ({ ...prices, [token.contract_address]: { price, dex: 'Trader Joe' } }));
+        })
+        .catch(() => {
+          setTradingPrices(prices => ({ ...prices, [token.contract_address]: { price: null, dex: null } }));
+        });
+    });
+  }, [tokens]);
+
+  // Fetch real 24h volume for trading tokens
+  useEffect(() => {
+    const tradingTokens = tokens.filter(token => getTokenType(token.token_type) === "Trading Coin");
+    tradingTokens.forEach(token => {
+      if (!token.contract_address || volumes[token.contract_address] || volumesLoading[token.contract_address]) return;
+      setVolumesLoading(v => ({ ...v, [token.contract_address]: true }));
+      fetchToken24hVolume(token.contract_address)
+        .then(vol => setVolumes(v => ({ ...v, [token.contract_address]: vol })))
+        .finally(() => setVolumesLoading(v => ({ ...v, [token.contract_address]: false })));
+    });
+  }, [tokens]);
 
   const getTokenType = (tokenType: string | null) => {
     if (!tokenType) return 'Fun Coin';
@@ -302,7 +399,19 @@ const Explore = () => {
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Total Supply:</span>
                         <span className="text-white font-semibold">
-                          {token.initial_supply.toLocaleString()}
+                          {(() => {
+                            try {
+                              const supply = parseFloat(ethers.formatUnits(BigInt(token.initial_supply), 18));
+                              if (supply >= 1_000_000) {
+                                return `${(supply / 1_000_000).toFixed(2)}M`;
+                              } else if (supply >= 1_000) {
+                                return `${(supply / 1_000).toFixed(2)}K`;
+                              }
+                              return supply.toLocaleString(undefined, { maximumFractionDigits: 2 });
+                            } catch {
+                              return token.initial_supply;
+                            }
+                          })()}
                         </span>
                       </div>
                     </div>
@@ -312,7 +421,17 @@ const Explore = () => {
                     <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                       <div>
                         <div className="text-gray-400">Price</div>
-                        <div className="text-white font-semibold">{mockPrice}</div>
+                        <div className="text-white font-semibold">
+                          {tradingPrices[token.contract_address] === undefined
+                            ? <span className="text-gray-400">Loading...</span>
+                            : tradingPrices[token.contract_address]?.price === null
+                              ? <span className="text-gray-400">—</span>
+                              : <span>
+                                  ${tradingPrices[token.contract_address]!.price!.toFixed(6)}
+                                  <span className="ml-1 text-xs text-avalanche-red">{tradingPrices[token.contract_address]!.dex}</span>
+                                </span>
+                          }
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-400">24h Change</div>
@@ -323,8 +442,15 @@ const Explore = () => {
                         </div>
                       </div>
                       <div>
-                        <div className="text-gray-400">Volume</div>
-                        <div className="text-white font-semibold">{mockVolume}</div>
+                        <div className="text-gray-400">Volume (24h)</div>
+                        <div className="text-white font-semibold">
+                          {volumesLoading[token.contract_address]
+                            ? <span className="text-gray-400">Loading...</span>
+                            : volumes[token.contract_address] === undefined || volumes[token.contract_address] === "-" || isNaN(Number(volumes[token.contract_address]))
+                              ? <span className="text-gray-400">—</span>
+                              : <span>{Number(volumes[token.contract_address]).toLocaleString(undefined, { maximumFractionDigits: 4 })} {token.ticker}</span>
+                          }
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-400">Supply</div>
@@ -365,6 +491,12 @@ const Explore = () => {
                   <Button 
                     className="w-full mt-4 bg-avalanche-red hover:bg-avalanche-red-dark text-white transition-all duration-200 font-semibold"
                     size="sm"
+                    onClick={() => {
+                      if (tokenType === "Trading Coin") {
+                        navigate(`/swap?token=${token.contract_address}`);
+                      }
+                    }}
+                    disabled={tokenType !== "Trading Coin"}
                   >
                     {tokenType === "Trading Coin" ? "Trade" : "View Details"}
                   </Button>

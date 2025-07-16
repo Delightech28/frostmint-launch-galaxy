@@ -441,6 +441,9 @@ const Launch = () => {
                         inputMode="numeric"
                         pattern="[0-9]*"
                       />
+                      <div className="text-xs text-gray-400 mt-1">
+                        Enter the total number of tokens you want (e.g., 1,000,000 for 1 million, 1,000,000,000 for 1 billion). Decimals are handled automatically.
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="fun-description" className="text-gray-300">Description</Label>
@@ -565,6 +568,9 @@ const Launch = () => {
                         inputMode="numeric"
                         pattern="[0-9]*"
                       />
+                      <div className="text-xs text-gray-400 mt-1">
+                        Enter the total number of tokens you want (e.g., 1,000,000 for 1 million, 1,000,000,000 for 1 billion). Decimals are handled automatically.
+                      </div>
                     </div>
                     <div>
                       <Label htmlFor="trading-description" className="text-gray-300">Description</Label>

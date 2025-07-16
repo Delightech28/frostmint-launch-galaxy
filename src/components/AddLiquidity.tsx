@@ -5,9 +5,6 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { DialogTitle, DialogDescription } from "./ui/dialog";
 
-// Fuji testnet router address (same for both DEXs)
-const ROUTER_ADDRESS = "0x2D99ABD9008Dc933ff5c0CD271B88309593aB921";
-
 // UniswapV2Router02 ABI (only needed functions)
 const ROUTER_ABI = [
   "function addLiquidityAVAX(address token, uint256 amountTokenDesired, uint256 amountTokenMin, uint256 amountAVAXMin, address to, uint256 deadline) payable returns (uint256 amountToken, uint256 amountAVAX, uint256 liquidity)"
@@ -22,8 +19,7 @@ const ERC20_ABI = [
 ];
 
 const DEX_OPTIONS = [
-  { name: "Trader Joe", value: "traderjoe" },
-  { name: "Pangolin", value: "pangolin" }
+  { name: "Trader Joe", value: "traderjoe" }
 ];
 
 function formatUnitsSafe(amount: bigint, decimals: number) {
@@ -41,6 +37,11 @@ function parseUnitsSafe(amount: string, decimals: number) {
     return 0n;
   }
 }
+
+// Only Trader Joe router address (Fuji testnet)
+const ROUTER_ADDRESSES: Record<string, string> = {
+  traderjoe: "0x3705aBF712ccD4fc56Ee76f0BD3009FD4013ad75"
+};
 
 const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, memeTokenImageUrl, onClose, onAddLiquiditySuccess }: {
   memeTokenAddress: string;
@@ -63,6 +64,9 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
   const [isAdding, setIsAdding] = useState(false);
   const [txStatus, setTxStatus] = useState<null | { status: "pending" | "success" | "error", message: string, hash?: string }>(null);
   const [error, setError] = useState<string>("");
+
+  // Helper to get the current router address
+  const getRouterAddress = () => ROUTER_ADDRESSES[dex];
 
   // Setup provider and signer
   useEffect(() => {
@@ -88,11 +92,11 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
   useEffect(() => {
     if (!provider || !userAddress || !memeTokenAddress) return;
     const erc20 = new ethers.Contract(memeTokenAddress, ERC20_ABI, provider);
-    erc20.allowance(userAddress, ROUTER_ADDRESS).then((allow: bigint) => {
+    erc20.allowance(userAddress, getRouterAddress()).then((allow: bigint) => {
       const needed = parseUnitsSafe(amountMemeToken || "0", memeTokenDecimals);
       setIsApproved(allow >= needed && needed > 0n);
     });
-  }, [provider, userAddress, memeTokenAddress, amountMemeToken, memeTokenDecimals, txStatus]);
+  }, [provider, userAddress, memeTokenAddress, amountMemeToken, memeTokenDecimals, dex, txStatus]);
 
   // Approve MemeToken
   const handleApprove = async () => {
@@ -101,7 +105,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
     try {
       if (!signer) throw new Error("Wallet not connected");
       const erc20 = new ethers.Contract(memeTokenAddress, ERC20_ABI, signer);
-      const tx = await erc20.approve(ROUTER_ADDRESS, parseUnitsSafe(amountMemeToken, memeTokenDecimals));
+      const tx = await erc20.approve(getRouterAddress(), parseUnitsSafe(amountMemeToken, memeTokenDecimals));
       setTxStatus({ status: "pending", message: "Approval pending...", hash: tx.hash });
       await tx.wait();
       setTxStatus({ status: "success", message: "Token approved!", hash: tx.hash });
@@ -120,7 +124,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
     setIsAdding(true);
     try {
       if (!signer) throw new Error("Wallet not connected");
-      const router = new ethers.Contract(ROUTER_ADDRESS, ROUTER_ABI, signer);
+      const router = new ethers.Contract(getRouterAddress(), ROUTER_ABI, signer);
       const amountToken = parseUnitsSafe(amountMemeToken, memeTokenDecimals);
       const amountTokenMin = amountToken * 95n / 100n; // 5% slippage
       const avaxAmount = parseUnitsSafe(amountAVAX, 18);
@@ -149,6 +153,59 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
     }
   };
 
+  // Fetch price from selected DEX only
+  const [price, setPrice] = useState<string | null>(null);
+  const [priceLoading, setPriceLoading] = useState(false);
+  useEffect(() => {
+    async function fetchPrice() {
+      setPrice(null);
+      setPriceLoading(true);
+      try {
+        // Only Trader Joe factory address
+        const FACTORY_ADDRESS = "0x9Ad6C38BE94206cA50bb0d90783181662f0Cfa10";
+        const FACTORY_ABI = [
+          'function getPair(address tokenA, address tokenB) external view returns (address pair)'
+        ];
+        const PAIR_ABI = [
+          'function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)',
+          'function token0() external view returns (address)',
+          'function token1() external view returns (address)'
+        ];
+        const WAVAX = '0xd00ae08403b9bbb9124bb305c09058e32c39a48c';
+        const provider = new ethers.JsonRpcProvider('https://api.avax-test.network/ext/bc/C/rpc');
+        const factory = new ethers.Contract(FACTORY_ADDRESS, FACTORY_ABI, provider);
+        const pairAddress = await factory.getPair(memeTokenAddress, WAVAX);
+        if (pairAddress === ethers.ZeroAddress) {
+          setPrice(null);
+          setPriceLoading(false);
+          return;
+        }
+        const pair = new ethers.Contract(pairAddress, PAIR_ABI, provider);
+        const [reserve0, reserve1] = await pair.getReserves();
+        const token0 = await pair.token0();
+        let reserveToken, reserveWAVAX;
+        if (token0.toLowerCase() === memeTokenAddress.toLowerCase()) {
+          reserveToken = reserve0;
+          reserveWAVAX = reserve1;
+        } else {
+          reserveToken = reserve1;
+          reserveWAVAX = reserve0;
+        }
+        if (reserveToken == 0n) {
+          setPrice(null);
+        } else {
+          const priceValue = Number(ethers.formatUnits(reserveWAVAX, 18)) / Number(ethers.formatUnits(reserveToken, memeTokenDecimals));
+          setPrice(priceValue.toFixed(6));
+        }
+      } catch (e) {
+        setPrice(null);
+      } finally {
+        setPriceLoading(false);
+      }
+    }
+    if (memeTokenAddress) fetchPrice();
+  }, [dex, memeTokenAddress, memeTokenDecimals, txStatus]);
+
   // Validation
   const parsedMemeTokenBalance = parseFloat(memeTokenBalance.replace(/,/g, ''));
   const parsedAmountMemeToken = parseFloat(amountMemeToken);
@@ -172,17 +229,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
       <DialogDescription className="text-gray-300 mb-4">
         Select DEX and supply both <span className="text-avalanche-red font-semibold">{memeTokenSymbol}</span> and <span className="text-avalanche-red font-semibold">AVAX</span> to enable trading for your new token.
       </DialogDescription>
-      <div className="mb-4">
-        <Label htmlFor="dex" className="text-gray-300">Select DEX</Label>
-        <select
-          id="dex"
-          className="w-full bg-black border border-avalanche-gray-medium rounded p-2 pr-8 mt-1 text-white focus:outline-none focus:border-avalanche-red"
-          value={dex}
-          onChange={e => setDex(e.target.value)}
-        >
-          {DEX_OPTIONS.map(opt => <option key={opt.value} value={opt.value} className="bg-black text-white">{opt.name}</option>)}
-        </select>
-      </div>
+      {/* DEX selection removed: Only Trader Joe is used */}
       <div className="mb-4">
         <Label htmlFor="memeToken" className="text-gray-300">{memeTokenSymbol} Amount</Label>
         <Input
@@ -194,6 +241,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
           onChange={e => setAmountMemeToken(e.target.value)}
           placeholder={`Balance: ${memeTokenBalance}`}
           className="bg-black border-avalanche-gray-medium text-white"
+          disabled={isApproved || isApproving}
         />
         <div className="text-xs text-gray-400 mt-1">Balance: {memeTokenBalance} <span className="text-avalanche-red">{memeTokenSymbol}</span></div>
         {hasInsufficientToken && (
@@ -211,6 +259,7 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
           onChange={e => setAmountAVAX(e.target.value)}
           placeholder={`Balance: ${avaxBalance}`}
           className="bg-black border-avalanche-gray-medium text-white"
+          disabled={isApproved || isApproving}
         />
         <div className="text-xs text-gray-400 mt-1">Balance: {avaxBalance} <span className="text-avalanche-red">AVAX</span></div>
         {hasInsufficientAvax && (
@@ -246,6 +295,14 @@ const AddLiquidity = ({ memeTokenAddress, memeTokenSymbol, memeTokenDecimals, me
           {isAdding ? "Adding..." : "Add Liquidity"}
         </Button>
       </div>
+      <Label className="text-white">Price ({DEX_OPTIONS.find(opt => opt.value === dex)?.name}):</Label>
+      {priceLoading ? (
+        <div className="text-gray-400 text-sm">Loading...</div>
+      ) : price ? (
+        <div className="text-white text-lg font-mono">1 {memeTokenSymbol} = {price} AVAX</div>
+      ) : (
+        <div className="text-gray-400 text-sm">No pool or no price yet</div>
+      )}
       <Button variant="outline" className="w-full mt-4 border-avalanche-red text-avalanche-red hover:bg-avalanche-red hover:text-white" onClick={onClose}>Close</Button>
     </div>
   );

@@ -8,9 +8,14 @@ import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ethers } from "ethers";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import AddLiquidity from "@/components/AddLiquidity";
+import { useState } from "react";
 
 const Dashboard = () => {
   const { address } = useWallet();
+  const [showAddLiquidityModal, setShowAddLiquidityModal] = useState(false);
+  const [selectedToken, setSelectedToken] = useState<any>(null);
 
   // Fetch user's tokens from database
   const { data: userTokens = [], isLoading } = useQuery({
@@ -191,6 +196,19 @@ const Dashboard = () => {
                           {token.description}
                         </div>
                       )}
+                      {/* Add Liquidity button for Trading Coin only */}
+                      {token.token_type && token.token_type.toLowerCase().includes("trading") && (
+                        <Button
+                          className="mt-4 bg-avalanche-red hover:bg-avalanche-red-dark text-white w-full"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedToken(token);
+                            setShowAddLiquidityModal(true);
+                          }}
+                        >
+                          Add Liquidity
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 ))}
@@ -199,6 +217,20 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={showAddLiquidityModal} onOpenChange={setShowAddLiquidityModal}>
+        <DialogContent>
+          {selectedToken && (
+            <AddLiquidity
+              memeTokenAddress={selectedToken.contract_address}
+              memeTokenSymbol={selectedToken.ticker}
+              memeTokenDecimals={18}
+              memeTokenImageUrl={selectedToken.image_url}
+              onClose={() => setShowAddLiquidityModal(false)}
+              onAddLiquiditySuccess={() => setShowAddLiquidityModal(false)}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

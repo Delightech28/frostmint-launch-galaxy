@@ -14,6 +14,7 @@ import Launch from "./pages/Launch";
 import Explore from "./pages/Explore";
 import Earn from "./pages/Earn";
 import NotFound from "./pages/NotFound";
+import Swap from "./pages/Swap";
 
 const queryClient = new QueryClient();
 
@@ -34,21 +35,10 @@ const App = () => (
                   <Dashboard />
                 </ProtectedRoute>
               } />
-              <Route path="/launch" element={
-                <ProtectedRoute>
-                  <Launch />
-                </ProtectedRoute>
-              } />
-              <Route path="/explore" element={
-                <ProtectedRoute>
-                  <Explore />
-                </ProtectedRoute>
-              } />
-              <Route path="/earn" element={
-                <ProtectedRoute>
-                  <Earn />
-                </ProtectedRoute>
-              } />
+              <Route path="/launch" element={<Launch />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/earn" element={<Earn />} />
+              <Route path="/swap" element={<Swap />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
